@@ -300,7 +300,7 @@ impl Repository {
 
     pub fn load_findings(&self, task_id: &Uuid) -> anyhow::Result<Vec<Finding>> {
         let mut stmt = self.conn.prepare(
-            "SELECT id, assessment_id, task_id, title, description, severity, confidence, status, impact, recommendation, references, created_at, updated_at
+            "SELECT id, assessment_id, task_id, title, description, severity, confidence, status, impact, recommendation, `references`, created_at, updated_at
              FROM findings WHERE task_id = ?1 ORDER BY created_at DESC",
         )?;
         let rows = stmt.query_map(params![task_id.to_string()], row_to_finding)?;
@@ -313,7 +313,7 @@ impl Repository {
 
     pub fn insert_finding(&self, finding: &Finding) -> anyhow::Result<()> {
         self.conn.execute(
-            "INSERT INTO findings (id, assessment_id, task_id, title, description, severity, confidence, status, impact, recommendation, references, created_at, updated_at)
+            "INSERT INTO findings (id, assessment_id, task_id, title, description, severity, confidence, status, impact, recommendation, `references`, created_at, updated_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
             params![
                 finding.id.to_string(),
@@ -336,7 +336,7 @@ impl Repository {
 
     pub fn update_finding(&self, finding: &Finding) -> anyhow::Result<()> {
         self.conn.execute(
-            "UPDATE findings SET title = ?2, description = ?3, severity = ?4, confidence = ?5, status = ?6, impact = ?7, recommendation = ?8, references = ?9, updated_at = ?10 WHERE id = ?1",
+            "UPDATE findings SET title = ?2, description = ?3, severity = ?4, confidence = ?5, status = ?6, impact = ?7, recommendation = ?8, `references` = ?9, updated_at = ?10 WHERE id = ?1",
             params![
                 finding.id.to_string(),
                 finding.title,

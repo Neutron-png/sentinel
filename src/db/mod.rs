@@ -72,7 +72,7 @@ pub fn initialize(path: &Path) -> anyhow::Result<Connection> {
             status TEXT NOT NULL DEFAULT 'Draft',
             impact TEXT NOT NULL DEFAULT '',
             recommendation TEXT NOT NULL DEFAULT '',
-            references TEXT NOT NULL DEFAULT '',
+            `references` TEXT NOT NULL DEFAULT '',
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             FOREIGN KEY (assessment_id) REFERENCES assessments(id),
