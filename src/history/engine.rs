@@ -9,6 +9,7 @@ use crate::history::models::HistoryEntry;
 use crate::history::repository::HistoryRepository;
 use crate::history::search::{search, HistorySearchField};
 use crate::history::sort::{sort, HistorySortField, SortDirection};
+use crate::network::protocol::HttpVersion;
 
 pub struct HistoryEngine<'a> {
     repo: HistoryRepository<'a>,
@@ -64,6 +65,11 @@ impl<'a> HistoryEngine<'a> {
             response_body: response_body.to_string(),
             request_headers: String::new(),
             response_headers: String::new(),
+            connection_id: None,
+            stream_id: None,
+            frame_metadata_json: None,
+            negotiated_alpn: None,
+            protocol_version: "HTTP/1.1".into(),
         };
         self.record(entry)
     }
@@ -74,6 +80,23 @@ impl<'a> HistoryEngine<'a> {
 
     pub fn get(&self, id: &Uuid) -> Option<&HistoryEntry> {
         self.cache.iter().find(|e| e.id == *id)
+    }
+
+    pub fn list_by_protocol(&self, version: HttpVersion, limit: usize) -> Vec<&HistoryEntry> {
+        let label = version.label();
+        self.cache
+            .iter()
+            .filter(|e| e.protocol_version == label)
+            .take(limit)
+            .collect()
+    }
+
+    pub fn list_by_connection(&self, connection_id: Uuid, limit: usize) -> Vec<&HistoryEntry> {
+        self.cache
+            .iter()
+            .filter(|e| e.connection_id == Some(connection_id))
+            .take(limit)
+            .collect()
     }
 
     pub fn delete(&mut self, id: &Uuid) -> Result<(), HistoryError> {
@@ -127,4 +150,27 @@ impl<'a> HistoryEngine<'a> {
         }
         Ok(())
     }
+
+    pub fn protocol_stats(&self) -> ProtocolStats {
+        let mut stats = ProtocolStats::default();
+        for entry in &self.cache {
+            match entry.protocol_version.as_str() {
+                "HTTP/2" => stats.http2_count += 1,
+                "HTTP/3" => stats.http3_count += 1,
+                _ => stats.http11_count += 1,
+            }
+            if let Some(ref alpn) = entry.negotiated_alpn {
+                stats.alpn_selections.push(alpn.clone());
+            }
+        }
+        stats
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ProtocolStats {
+    pub http11_count: u64,
+    pub http2_count: u64,
+    pub http3_count: u64,
+    pub alpn_selections: Vec<String>,
 }

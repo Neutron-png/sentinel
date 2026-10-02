@@ -1,20 +1,19 @@
-use crate::network::models::{HttpRequest, HttpResponse, HttpBody};
+use crate::network::models::{HttpRequest, HttpResponse};
 use crate::scanner::analyzer::engine::ResponseAnalyzer;
 use crate::scanner::payload::engine::PayloadEngine;
 use crate::scanner::payload::models::InsertionPoint;
 use crate::scanner::sdk::context::ScanRuleContext;
-use crate::scanner::sdk::errors::SdkError;
 use crate::scanner::sdk::metadata::RuleMetadata;
 use crate::scanner::sdk::result::{RuleConfidence, RuleResult, RuleSeverity, RuleStatus};
 use crate::scanner::sdk::rule::ScanRule;
-use crate::scanner::rules::active\xss\techniques::{XssTechnique, XssFinding};
-use crate::scanner::rules::active\xss\techniques::attribute::AttributeXss;
-use crate::scanner::rules::active\xss\techniques::dom::DomXss;
-use crate::scanner::rules::active\xss\techniques::html::HtmlContextXss;
-use crate::scanner::rules::active\xss\techniques::javascript::JavaScriptXss;
-use crate::scanner::rules::active\xss\techniques::reflected::ReflectedXss;
-use crate::scanner::rules::active\xss\techniques::stored::StoredXss;
-use crate::scanner::rules::active\xss\techniques::url::UrlContextXss;
+use crate::scanner::rules::active::xss::techniques::XssTechnique;
+use crate::scanner::rules::active::xss::techniques::attribute::AttributeXss;
+use crate::scanner::rules::active::xss::techniques::dom::DomXss;
+use crate::scanner::rules::active::xss::techniques::html::HtmlContextXss;
+use crate::scanner::rules::active::xss::techniques::javascript::JavaScriptXss;
+use crate::scanner::rules::active::xss::techniques::reflected::ReflectedXss;
+use crate::scanner::rules::active::xss::techniques::stored::StoredXss;
+use crate::scanner::rules::active::xss::techniques::url::UrlContextXss;
 
 pub struct XssRule {
     metadata: RuleMetadata,

@@ -2,7 +2,8 @@ use crate::network::models::{HttpRequest, HttpResponse};
 use crate::scanner::analyzer::engine::ResponseAnalyzer;
 use crate::scanner::payload::engine::PayloadEngine;
 use crate::scanner::payload::models::InsertionPoint;
-use crate::scanner::rules::active\xss\techniques::{XssFinding, XssTechnique};
+use crate::scanner::sdk::result::RuleConfidence;
+use crate::scanner::rules::active::xss::techniques::{raw_reflection, XssFinding, XssTechnique};
 
 pub struct UrlContextXss;
 
@@ -23,16 +24,20 @@ impl XssTechnique for UrlContextXss {
     }
 
     fn analyze(&self, analyzer: &ResponseAnalyzer, request: &HttpRequest, response: &HttpResponse, payload: &str) -> Option<XssFinding> {
-        let body = response.body.as_text().unwrap_or("");
-        let found = body.contains("javascript:") || body.contains("data:text/html") || analyzer.detect_reflection(response, payload).found;
-        if found {
-            Some(XssFinding {
-                technique: self.name().to_string(),
-                injection_point: request.url.clone(),
-                payload: payload.to_string(),
-                confidence: crate::scanner::sdk::result::RuleConfidence::Medium,
-                evidence: format!("URL context XSS detected.\nURL: {}\nPayload: {}", request.url, payload),
-            })
-        } else { None }
+        let refl = raw_reflection(analyzer, response, payload)?;
+        let scheme_injection = payload.contains("javascript:") || payload.contains("data:text/html");
+        if !scheme_injection {
+            return None;
+        }
+        Some(XssFinding {
+            technique: self.name().to_string(),
+            injection_point: request.url.clone(),
+            payload: payload.to_string(),
+            confidence: RuleConfidence::Medium,
+            evidence: format!(
+                "A URL-scheme injection payload was reflected verbatim (unescaped).\nURL: {}\nPayload: {}\nContext: {}\nStatus: Potential - manual confirmation that the value lands in a navigable URL context is required.",
+                request.url, payload, refl.context
+            ),
+        })
     }
 }

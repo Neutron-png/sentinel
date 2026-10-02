@@ -25,28 +25,46 @@ impl SqliTechnique for ErrorBasedTechnique {
 
     fn analyze_response(
         &self,
-        _baseline: &HttpResponse,
+        baseline: &HttpResponse,
         test: &HttpResponse,
         payload: &str,
         original_request: &HttpRequest,
     ) -> Option<SqliFinding> {
         let body = test.body.as_text().unwrap_or("");
+        let base = baseline.body.as_text().unwrap_or("");
         let error_patterns = [
             "SQL syntax", "mysql_fetch", "ORA-", "PostgreSQL", "SQLite",
             "unclosed quotation mark", "Microsoft OLE DB", "SQLServer",
             "syntax error", "unknown column", "unterminated string",
         ];
-        if error_patterns.iter().any(|p| body.to_lowercase().contains(&p.to_lowercase())) {
-            Some(SqliFinding {
-                technique: self.name().to_string(),
-                parameter: "query".to_string(),
-                payload: payload.to_string(),
-                confidence: crate::scanner::sdk::result::RuleConfidence::High,
-                database_hint: guess_db(body),
-                evidence: format!("Error-based SQLi detected.\nRequest: {}\nPayload: {}\nResponse body (excerpt): {}",
-                    original_request.url, payload, &body[..body.len().min(500)]),
-            })
-        } else { None }
+        let body_lower = body.to_lowercase();
+        let base_lower = base.to_lowercase();
+        // A database error signature must be present in the injected response
+        // AND absent from the baseline; otherwise it is page content, not a
+        // reaction to the payload.
+        let new_signal: Vec<&str> = error_patterns
+            .iter()
+            .filter(|p| body_lower.contains(&p.to_lowercase()))
+            .filter(|p| !base_lower.contains(&p.to_lowercase()))
+            .copied()
+            .collect();
+        if new_signal.is_empty() {
+            return None;
+        }
+        Some(SqliFinding {
+            technique: self.name().to_string(),
+            parameter: "query".to_string(),
+            payload: payload.to_string(),
+            confidence: crate::scanner::sdk::result::RuleConfidence::High,
+            database_hint: guess_db(body),
+            evidence: format!(
+                "A database error signature appeared only after injecting the payload.\nRequest: {}\nPayload: {}\nNew error signature(s): {}\nResponse body (excerpt): {}\nStatus: Potential - manual confirmation is required.",
+                original_request.url,
+                payload,
+                new_signal.join(", "),
+                &body[..body.len().min(500)]
+            ),
+        })
     }
 }
 

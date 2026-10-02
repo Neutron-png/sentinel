@@ -36,16 +36,21 @@ impl SqliTechnique for UnionBasedTechnique {
     ) -> Option<SqliFinding> {
         let b_len = baseline.body.as_text().map(|s| s.len()).unwrap_or(0);
         let t_len = test.body.as_text().map(|s| s.len()).unwrap_or(0);
-        // UNION can change response structure
-        if t_len != b_len && t_len > 0 {
+        let threshold = (b_len / 5).max(200);
+        // A UNION-based signal requires the response to grow materially beyond
+        // the baseline while remaining a success, consistent with appended
+        // query output. Any length change alone is not evidence.
+        if test.status_code == 200 && t_len > b_len && (t_len - b_len) > threshold {
             Some(SqliFinding {
                 technique: self.name().to_string(),
                 parameter: "query".to_string(),
                 payload: "UNION SELECT".to_string(),
-                confidence: crate::scanner::sdk::result::RuleConfidence::Medium,
+                confidence: crate::scanner::sdk::result::RuleConfidence::Low,
                 database_hint: None,
-                evidence: format!("UNION-based SQLi detected.\nRequest: {}\nBaseline length: {}\nTest length: {}",
-                    original_request.url, b_len, t_len),
+                evidence: format!(
+                    "The injected response grew materially beyond the baseline.\nRequest: {}\nBaseline length: {}\nTest length: {}\nStatus: Potential - confirm the injected columns are reflected in the output before treating this as SQL injection.",
+                    original_request.url, b_len, t_len
+                ),
             })
         } else { None }
     }

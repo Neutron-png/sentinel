@@ -311,6 +311,19 @@ impl Repository {
         Ok(items)
     }
 
+    pub fn list_findings_by_assessment(&self, assessment_id: &Uuid) -> anyhow::Result<Vec<Finding>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, assessment_id, task_id, title, description, severity, confidence, status, impact, recommendation, `references`, created_at, updated_at
+             FROM findings WHERE assessment_id = ?1 ORDER BY created_at DESC",
+        )?;
+        let rows = stmt.query_map(params![assessment_id.to_string()], row_to_finding)?;
+        let mut items = Vec::new();
+        for row in rows {
+            items.push(row?);
+        }
+        Ok(items)
+    }
+
     pub fn insert_finding(&self, finding: &Finding) -> anyhow::Result<()> {
         self.conn.execute(
             "INSERT INTO findings (id, assessment_id, task_id, title, description, severity, confidence, status, impact, recommendation, `references`, created_at, updated_at)
@@ -607,6 +620,40 @@ impl Repository {
         self.conn.execute("DELETE FROM history_entries", [])?;
         Ok(())
     }
+    pub fn list_history_by_protocol(
+        &self,
+        version: &str,
+        limit: usize,
+    ) -> anyhow::Result<Vec<HistoryEntry>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT * FROM history_entries WHERE protocol_version = ?1 ORDER BY timestamp DESC LIMIT ?2"
+        )?;
+        let rows = stmt.query_map(params![version, limit as i64], row_to_history)?;
+        let mut items = Vec::new();
+        for row in rows {
+            items.push(row?);
+        }
+        Ok(items)
+    }
+
+    pub fn list_history_by_connection(
+        &self,
+        connection_id: &Uuid,
+        limit: usize,
+    ) -> anyhow::Result<Vec<HistoryEntry>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT * FROM history_entries WHERE connection_id = ?1 ORDER BY timestamp DESC LIMIT ?2"
+        )?;
+        let rows = stmt.query_map(
+            params![connection_id.to_string(), limit as i64],
+            row_to_history,
+        )?;
+        let mut items = Vec::new();
+        for row in rows {
+            items.push(row?);
+        }
+        Ok(items)
+    }
 }
 
 fn row_to_assessment(row: &rusqlite::Row) -> rusqlite::Result<Assessment> {
@@ -784,5 +831,23 @@ fn row_to_history(row: &rusqlite::Row) -> rusqlite::Result<HistoryEntry> {
         response_body: row.get("response_body")?,
         request_headers: row.get("request_headers")?,
         response_headers: row.get("response_headers")?,
+        connection_id: row
+            .get::<_, Option<String>>("connection_id")?
+            .and_then(|s| {
+                if s.is_empty() {
+                    None
+                } else {
+                    uuid::Uuid::parse_str(&s).ok()
+                }
+            }),
+        stream_id: row
+            .get::<_, Option<i64>>("stream_id")?
+            .filter(|v| *v > 0)
+            .map(|v| v as u32),
+        frame_metadata_json: row.get::<_, Option<String>>("frame_metadata_json")?,
+        negotiated_alpn: row.get::<_, Option<String>>("negotiated_alpn")?,
+        protocol_version: row
+            .get::<_, Option<String>>("protocol_version")?
+            .unwrap_or_else(|| "HTTP/1.1".to_string()),
     })
 }

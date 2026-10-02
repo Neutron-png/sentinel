@@ -9,5 +9,5 @@ define_header_rule!(
     "The Cross-Origin-Opener-Policy (COOP) header is not set.",
     "OWASP WSTG-CLIENT-05\nMDN: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy\nCWE-942: Permissive Cross-domain Policy",
     ScanSeverity::Low,
-    ScanConfidence::Confirmed
+    ScanConfidence::Medium
 );

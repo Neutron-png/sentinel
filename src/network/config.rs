@@ -12,6 +12,7 @@ pub struct HttpClientConfig {
     pub tls_verify: bool,
     pub proxy_url: Option<String>,
     pub accept_invalid_certs: bool,
+    pub http2_prior_knowledge: bool,
 }
 
 impl Default for HttpClientConfig {
@@ -25,6 +26,7 @@ impl Default for HttpClientConfig {
             tls_verify: true,
             proxy_url: None,
             accept_invalid_certs: false,
+            http2_prior_knowledge: false,
         }
     }
 }

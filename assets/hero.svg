@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 720" width="1600" height="720" role="img" aria-label="Sentinel">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0518"/>
+      <stop offset="0.5" stop-color="#150a3a"/>
+      <stop offset="1" stop-color="#2a0d5e"/>
+    </linearGradient>
+    <linearGradient id="band" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#3b1fb0" stop-opacity="0"/>
+      <stop offset="0.5" stop-color="#7a3cf0" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#c05cf5" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b1fb0"/>
+      <stop offset="0.55" stop-color="#7a3cf0"/>
+      <stop offset="1" stop-color="#c05cf5"/>
+    </linearGradient>
+    <linearGradient id="mark2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#4b2bd6"/>
+      <stop offset="1" stop-color="#d06bf7"/>
+    </linearGradient>
+    <radialGradient id="glowR" cx="0.32" cy="0.5" r="0.6">
+      <stop offset="0" stop-color="#7a3cf0" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#7a3cf0" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="2.4" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1600" height="720" fill="url(#bg)"/>
+  <rect width="1600" height="720" fill="url(#glowR)"/>
+  <polygon points="0,540 1600,240 1600,300 0,600" fill="url(#band)"/>
+
+  <g stroke="#5b3bd0" stroke-opacity="0.16" stroke-width="1">
+    <path d="M0 120 H1600 M0 240 H1600 M0 360 H1600 M0 480 H1600 M0 600 H1600"/>
+    <path d="M200 0 V720 M400 0 V720 M600 0 V720 M800 0 V720 M1000 0 V720 M1200 0 V720 M1400 0 V720"/>
+  </g>
+  <g stroke="#8b6bf0" stroke-opacity="0.5" stroke-width="1.5">
+    <path d="M70 60 h22 M70 60 v22 M1530 660 h-22 M1530 660 v-22"/>
+    <path d="M1480 90 h26 M1493 77 v26"/>
+  </g>
+
+  <g transform="translate(300,360)" filter="url(#soft)">
+    <path d="M0 -96 L82 -48 L82 48 L0 96 L-82 48 L-82 -48 Z"
+          fill="none" stroke="url(#mark)" stroke-width="15" stroke-linejoin="round"/>
+    <path d="M-41 -44 L41 -44 L41 -20 L-10 -20 L-10 -6 L41 -6 L41 44 L-41 44 L-41 20 L10 20 L10 6 L-41 6 Z"
+          fill="url(#mark2)"/>
+  </g>
+
+  <text x="480" y="352" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif"
+        font-size="150" font-weight="700" letter-spacing="26" fill="#ffffff">SENTINEL</text>
+  <text x="486" y="418" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif"
+        font-size="27" font-weight="500" letter-spacing="11" fill="#b98cf5">REAL VULNERABILITIES. REAL EVIDENCE.</text>
+</svg>

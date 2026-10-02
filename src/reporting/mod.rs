@@ -6,4 +6,5 @@ pub mod errors;
 pub mod events;
 pub mod export;
 pub mod models;
+pub mod protocol;
 pub mod templates;

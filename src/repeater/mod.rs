@@ -3,5 +3,7 @@ pub mod errors;
 pub mod executor;
 pub mod history;
 pub mod models;
+pub mod parser;
+pub mod protocol;
 pub mod request_editor;
 pub mod tab;

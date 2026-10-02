@@ -9,5 +9,5 @@ define_header_rule!(
     "The X-Content-Type-Options header is not set.",
     "OWASP WSTG-CONF-04\nMDN: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Content-Type-Options\nCWE-434: Unrestricted Upload of File with Dangerous Type",
     ScanSeverity::Low,
-    ScanConfidence::Confirmed
+    ScanConfidence::Medium
 );

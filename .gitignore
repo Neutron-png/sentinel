@@ -1,4 +1,36 @@
+# Rust build output
 /target
+**/target
 **/*.rs.bk
+
+# Node / frontend
+node_modules/
+ui/node_modules/
+ui/dist/
+dist/
+package-lock.json
+
+# Sentinel runtime data
 .sentinel
 *.db
+*.db-journal
+*.db-wal
+
+# Bundled third-party tooling (large binaries)
+tools/
+
+# Logs & local artifacts
+*.log
+app-err.log
+app-out.log
+rep-test.log
+test-out.log
+tor-test.log
+tauri-dev.log
+tauri-dev.err.log
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

@@ -6,7 +6,7 @@ use crate::scanner::sdk::context::ScanRuleContext;
 use crate::scanner::sdk::metadata::RuleMetadata;
 use crate::scanner::sdk::result::{RuleConfidence, RuleResult, RuleSeverity, RuleStatus};
 use crate::scanner::sdk::rule::ScanRule;
-use crate::scanner::rules::active::path_traversal::techniques::{PathTraversalTechnique, PathTraversalFinding};
+use crate::scanner::rules::active::path_traversal::techniques::PathTraversalTechnique;
 use crate::scanner::rules::active::path_traversal::techniques::relative::Relative;
 use crate::scanner::rules::active::path_traversal::techniques::absolute::Absolute;
 use crate::scanner::rules::active::path_traversal::techniques::encoded::Encoded;

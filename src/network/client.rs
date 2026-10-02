@@ -7,6 +7,7 @@ use crate::network::models::{
     parse_cookies_from_header, HttpBody, HttpCookie, HttpHeader, HttpRequest, HttpResponse,
     RequestTiming,
 };
+use crate::network::protocol::HttpVersion;
 use reqwest::redirect::Policy;
 use std::time::Instant;
 
@@ -14,6 +15,7 @@ pub struct HttpClient {
     inner: reqwest::Client,
     config: HttpClientConfig,
     cookie_jar: CookieJar,
+    negotiated_version: Option<HttpVersion>,
 }
 
 impl HttpClient {
@@ -23,8 +25,10 @@ impl HttpClient {
             .user_agent(&config.user_agent)
             .timeout(config.request_timeout)
             .connect_timeout(config.connection_timeout)
-            .cookie_provider(jar.inner())
-            .http2_prior_knowledge();
+            .cookie_provider(jar.inner());
+        if config.http2_prior_knowledge {
+            builder = builder.http2_prior_knowledge();
+        }
         if config.follow_redirects {
             builder = builder.redirect(Policy::limited(config.max_redirects));
         } else {
@@ -42,6 +46,7 @@ impl HttpClient {
             inner,
             config,
             cookie_jar: jar,
+            negotiated_version: None,
         })
     }
     pub fn config(&self) -> &HttpClientConfig {
@@ -50,11 +55,17 @@ impl HttpClient {
     pub fn config_mut(&mut self) -> &mut HttpClientConfig {
         &mut self.config
     }
+
+    pub fn negotiated_version(&self) -> Option<HttpVersion> {
+        self.negotiated_version
+    }
+
     pub async fn execute(&self, request: HttpRequest) -> Result<HttpResponse, NetworkError> {
         let started = Instant::now();
         let method = reqwest::Method::from_bytes(request.method.as_bytes())
             .map_err(|_| NetworkError::Build(format!("invalid method: {}", request.method)))?;
-        let mut rb = self.inner.request(method, &request.url);
+        let url = apply_query_params(&request.url, &request.query_params);
+        let mut rb = self.inner.request(method, &url);
         for hdr in &request.headers {
             rb = rb.header(&hdr.name, &hdr.value);
         }
@@ -74,7 +85,10 @@ impl HttpClient {
         let url = resp.url().to_string();
         let status = resp.status().as_u16();
         let status_text = resp.status().canonical_reason().unwrap_or("").to_string();
-        let protocol = format!("{:?}", resp.version());
+        let raw_version = format!("{:?}", resp.version());
+        let protocol = HttpVersion::from_reqwest_version(&raw_version)
+            .label()
+            .to_string();
         let content_type = resp
             .headers()
             .get("content-type")
@@ -133,5 +147,52 @@ impl HttpClient {
     }
     pub fn cookie_jar(&self) -> &CookieJar {
         &self.cookie_jar
+    }
+}
+
+/// Appends structured query parameters to the request URL using proper
+/// percent-encoding. Without this, payloads inserted into query parameters by
+/// the scanner/intruder would never reach the target.
+fn apply_query_params(url: &str, params: &[(String, String)]) -> String {
+    if params.is_empty() {
+        return url.to_string();
+    }
+    match url::Url::parse(url) {
+        Ok(mut parsed) => {
+            {
+                let mut pairs = parsed.query_pairs_mut();
+                for (key, value) in params {
+                    pairs.append_pair(key, value);
+                }
+            }
+            parsed.to_string()
+        }
+        Err(_) => url.to_string(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::apply_query_params;
+
+    #[test]
+    fn appends_and_encodes_query_params() {
+        let out = apply_query_params(
+            "http://example.com/search",
+            &[("q".to_string(), "' OR 1=1--".to_string())],
+        );
+        assert!(out.starts_with("http://example.com/search?q="));
+        assert!(out.contains("%27"), "single quote must be percent-encoded: {out}");
+        assert!(!out.contains("' OR 1=1--"), "raw payload must not appear unencoded");
+    }
+
+    #[test]
+    fn preserves_existing_query_and_noop_when_empty() {
+        assert_eq!(apply_query_params("http://example.com/", &[]), "http://example.com/");
+        let out = apply_query_params(
+            "http://example.com/a?x=1",
+            &[("y".to_string(), "2".to_string())],
+        );
+        assert!(out.contains("x=1") && out.contains("y=2"), "both params expected: {out}");
     }
 }

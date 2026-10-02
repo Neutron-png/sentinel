@@ -146,12 +146,26 @@ pub fn initialize(path: &Path) -> anyhow::Result<Connection> {
             request_body TEXT NOT NULL DEFAULT '',
             response_body TEXT NOT NULL DEFAULT '',
             request_headers TEXT NOT NULL DEFAULT '',
-            response_headers TEXT NOT NULL DEFAULT ''
+            response_headers TEXT NOT NULL DEFAULT '',
+            connection_id TEXT,
+            stream_id INTEGER DEFAULT 0,
+            frame_metadata_json TEXT,
+            negotiated_alpn TEXT,
+            protocol_version TEXT DEFAULT 'HTTP/1.1'
         );",
     )?;
 
-    // Migration: add reference column to tasks if missing
-    let _ = conn.execute_batch("ALTER TABLE tasks ADD COLUMN reference TEXT NOT NULL DEFAULT '';");
+    // Safe migration for existing databases - add new columns if they don't exist
+    for col_stmt in &[
+        "ALTER TABLE history_entries ADD COLUMN connection_id TEXT",
+        "ALTER TABLE history_entries ADD COLUMN stream_id INTEGER DEFAULT 0",
+        "ALTER TABLE history_entries ADD COLUMN frame_metadata_json TEXT",
+        "ALTER TABLE history_entries ADD COLUMN negotiated_alpn TEXT",
+        "ALTER TABLE history_entries ADD COLUMN protocol_version TEXT DEFAULT 'HTTP/1.1'",
+        "ALTER TABLE tasks ADD COLUMN reference TEXT NOT NULL DEFAULT ''",
+    ] {
+        let _ = conn.execute_batch(col_stmt);
+    }
 
     Ok(conn)
 }

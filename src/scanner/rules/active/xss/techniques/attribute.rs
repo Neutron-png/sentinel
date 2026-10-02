@@ -2,7 +2,8 @@ use crate::network::models::{HttpRequest, HttpResponse};
 use crate::scanner::analyzer::engine::ResponseAnalyzer;
 use crate::scanner::payload::engine::PayloadEngine;
 use crate::scanner::payload::models::InsertionPoint;
-use crate::scanner::rules::active\xss\techniques::{XssFinding, XssTechnique};
+use crate::scanner::sdk::result::RuleConfidence;
+use crate::scanner::rules::active::xss::techniques::{raw_reflection, XssFinding, XssTechnique};
 
 pub struct AttributeXss;
 
@@ -16,7 +17,7 @@ impl XssTechnique for AttributeXss {
         let mut results = Vec::new();
         for p in &attr_payloads {
             for point in points {
-                let mut req = engine.insert_into(request, point, p);
+                let req = engine.insert_into(request, point, p);
                 results.push((p.to_string(), req));
             }
         }
@@ -24,17 +25,20 @@ impl XssTechnique for AttributeXss {
     }
 
     fn analyze(&self, analyzer: &ResponseAnalyzer, request: &HttpRequest, response: &HttpResponse, payload: &str) -> Option<XssFinding> {
-        let body = response.body.as_text().unwrap_or("");
-        let indicators = ["onmouseover", "onfocus", "autofocus"];
-        let found = indicators.iter().any(|i| body.contains(i)) || analyzer.detect_reflection(response, payload).found;
-        if found {
-            Some(XssFinding {
-                technique: self.name().to_string(),
-                injection_point: request.url.clone(),
-                payload: payload.to_string(),
-                confidence: crate::scanner::sdk::result::RuleConfidence::Medium,
-                evidence: format!("Attribute context XSS detected.\nURL: {}\nPayload: {}", request.url, payload),
-            })
-        } else { None }
+        let refl = raw_reflection(analyzer, response, payload)?;
+        let attr_break = payload.contains('"') || payload.contains('\'') || payload.contains('>');
+        if !attr_break {
+            return None;
+        }
+        Some(XssFinding {
+            technique: self.name().to_string(),
+            injection_point: request.url.clone(),
+            payload: payload.to_string(),
+            confidence: RuleConfidence::Medium,
+            evidence: format!(
+                "An attribute-context breakout payload was reflected verbatim (unescaped).\nURL: {}\nPayload: {}\nContext: {}\nStatus: Potential - manual confirmation of attribute breakout is required.",
+                request.url, payload, refl.context
+            ),
+        })
     }
 }

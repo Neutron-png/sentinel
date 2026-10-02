@@ -9,5 +9,5 @@ define_header_rule!(
     "The X-Frame-Options header is not set.",
     "OWASP WSTG-CONF-04\nMDN: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options\nCWE-1021: Improper Restriction of Rendered UI Layers",
     ScanSeverity::Medium,
-    ScanConfidence::Confirmed
+    ScanConfidence::Medium
 );

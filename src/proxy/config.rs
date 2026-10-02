@@ -2,6 +2,8 @@
 
 use std::net::SocketAddr;
 
+use crate::proxy::socks::Upstream;
+
 #[derive(Debug, Clone)]
 pub struct ProxyConfig {
     pub listen_addr: SocketAddr,
@@ -11,6 +13,7 @@ pub struct ProxyConfig {
     pub verify_upstream_certs: bool,
     pub max_connections: usize,
     pub connection_timeout_secs: u64,
+    pub upstream: Upstream,
 }
 
 impl Default for ProxyConfig {
@@ -23,6 +26,7 @@ impl Default for ProxyConfig {
             verify_upstream_certs: false,
             max_connections: 256,
             connection_timeout_secs: 30,
+            upstream: Upstream::Direct,
         }
     }
 }

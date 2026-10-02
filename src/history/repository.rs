@@ -26,6 +26,22 @@ impl<'a> HistoryRepository<'a> {
         self.repo.list_history(limit)
     }
 
+    pub fn list_by_protocol(
+        &self,
+        version: &str,
+        limit: usize,
+    ) -> anyhow::Result<Vec<HistoryEntry>> {
+        self.repo.list_history_by_protocol(version, limit)
+    }
+
+    pub fn list_by_connection(
+        &self,
+        connection_id: &Uuid,
+        limit: usize,
+    ) -> anyhow::Result<Vec<HistoryEntry>> {
+        self.repo.list_history_by_connection(connection_id, limit)
+    }
+
     pub fn delete(&self, id: &Uuid) -> anyhow::Result<()> {
         self.repo.delete_history(id)
     }

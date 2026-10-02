@@ -5,8 +5,7 @@ pub mod union_based;
 
 use crate::network::models::{HttpRequest, HttpResponse};
 use crate::scanner::payload::engine::PayloadEngine;
-use crate::scanner::sdk::context::ScanRuleContext;
-use crate::scanner::sdk::result::{RuleConfidence, RuleResult, RuleSeverity};
+use crate::scanner::sdk::result::RuleConfidence;
 
 pub trait SqliTechnique: Send + Sync {
     fn name(&self) -> &'static str;

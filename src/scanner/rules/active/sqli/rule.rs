@@ -2,10 +2,9 @@ use crate::scanner::sdk::metadata::RuleMetadata;
 use crate::scanner::sdk::result::{RuleResult, RuleSeverity, RuleConfidence, RuleStatus};
 use crate::scanner::sdk::rule::ScanRule;
 use crate::scanner::sdk::context::ScanRuleContext;
-use crate::scanner::sdk::errors::SdkError;
 use crate::scanner::payload::engine::PayloadEngine;
-use crate::network::models::{HttpRequest, HttpResponse, HttpBody};
-use crate::scanner::rules::active::sqli::techniques::{SqliTechnique, SqliFinding};
+use crate::network::models::{HttpRequest, HttpResponse};
+use crate::scanner::rules::active::sqli::techniques::SqliTechnique;
 use crate::scanner::rules::active::sqli::techniques::error_based::ErrorBasedTechnique;
 use crate::scanner::rules::active::sqli::techniques::boolean_based::BooleanBasedTechnique;
 use crate::scanner::rules::active::sqli::techniques::time_based::TimeBasedTechnique;
@@ -65,8 +64,13 @@ impl ScanRule for SqliRule {
         response: &HttpResponse,
     ) -> Vec<RuleResult> {
         let mut results = Vec::new();
-        // Baseline response for comparison
-        let baseline = response;
+        // Differential techniques must compare the injected response against a
+        // genuine baseline. When the pipeline did not provide one, differential
+        // analysis cannot be performed, so no finding is produced rather than
+        // comparing the response with itself.
+        let Some(baseline) = context.baseline.as_ref() else {
+            return results;
+        };
 
         for technique in &self.techniques {
             let params = vec!["id", "q", "search"];

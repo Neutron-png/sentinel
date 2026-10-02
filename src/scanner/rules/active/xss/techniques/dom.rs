@@ -2,7 +2,8 @@ use crate::network::models::{HttpRequest, HttpResponse};
 use crate::scanner::analyzer::engine::ResponseAnalyzer;
 use crate::scanner::payload::engine::PayloadEngine;
 use crate::scanner::payload::models::InsertionPoint;
-use crate::scanner::rules::active\xss\techniques::{XssFinding, XssTechnique};
+use crate::scanner::sdk::result::RuleConfidence;
+use crate::scanner::rules::active::xss::techniques::{raw_reflection, XssFinding, XssTechnique};
 
 pub struct DomXss;
 
@@ -23,18 +24,22 @@ impl XssTechnique for DomXss {
     }
 
     fn analyze(&self, analyzer: &ResponseAnalyzer, request: &HttpRequest, response: &HttpResponse, payload: &str) -> Option<XssFinding> {
-        let body = response.body.as_text().unwrap_or("");
-        let sinks = ["innerHTML", "document.write", "eval(", "setTimeout", "setInterval"];
-        let found_sinks: Vec<&str> = sinks.iter().filter(|s| body.to_lowercase().contains(&s.to_lowercase())).copied().collect();
-        if !found_sinks.is_empty() {
-            let refl = analyzer.detect_reflection(response, payload);
-            Some(XssFinding {
-                technique: self.name().to_string(),
-                injection_point: request.url.clone(),
-                payload: payload.to_string(),
-                confidence: if refl.found { crate::scanner::sdk::result::RuleConfidence::Medium } else { crate::scanner::sdk::result::RuleConfidence::Low },
-                evidence: format!("DOM XSS sinks found: {}\nURL: {}\nPayload: {}", found_sinks.join(", "), request.url, payload),
-            })
-        } else { None }
+        let refl = raw_reflection(analyzer, response, payload)?;
+        let body = response.body.as_text().unwrap_or("").to_lowercase();
+        let sinks = ["innerhtml", "document.write", "eval(", "settimeout", "setinterval"];
+        let found: Vec<&str> = sinks.iter().filter(|s| body.contains(**s)).copied().collect();
+        if found.is_empty() {
+            return None;
+        }
+        Some(XssFinding {
+            technique: self.name().to_string(),
+            injection_point: request.url.clone(),
+            payload: payload.to_string(),
+            confidence: RuleConfidence::Low,
+            evidence: format!(
+                "An unescaped reflection was observed and the page contains JavaScript sink(s): {}.\nURL: {}\nPayload: {}\nContext: {}\nStatus: Potential - DOM XSS requires client-side execution and the data-flow into the sink was not verified; this is a candidate only.",
+                found.join(", "), request.url, payload, refl.context
+            ),
+        })
     }
 }

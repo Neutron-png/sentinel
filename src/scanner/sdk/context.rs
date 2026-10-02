@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use crate::network::client::HttpClient;
-use crate::network::models::HttpRequest;
+use crate::network::models::{HttpRequest, HttpResponse};
 use crate::scope::engine::ScopeEngine;
 
 pub struct ScanRuleContext {
@@ -13,6 +13,10 @@ pub struct ScanRuleContext {
     pub target: String,
     pub config: RuleConfig,
     pub logger: Vec<String>,
+    /// Response to the unmutated target request. Differential rules must
+    /// compare an injected response against this baseline; a rule must never
+    /// use its own injected response as the baseline.
+    pub baseline: Option<HttpResponse>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +45,7 @@ impl ScanRuleContext {
             target: target.to_string(),
             config: RuleConfig::default(),
             logger: Vec::new(),
+            baseline: None,
         }
     }
 
@@ -50,6 +55,11 @@ impl ScanRuleContext {
     }
     pub fn with_assessment(mut self, id: uuid::Uuid) -> Self {
         self.assessment_id = Some(id);
+        self
+    }
+
+    pub fn with_baseline(mut self, response: HttpResponse) -> Self {
+        self.baseline = Some(response);
         self
     }
 

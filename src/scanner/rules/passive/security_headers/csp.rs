@@ -9,5 +9,5 @@ define_header_rule!(
     "Content Security Policy (CSP) is not configured.",
     "OWASP WSTG-CONF-04\nMDN: https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP\nCWE-693: Protection Mechanism Failure",
     ScanSeverity::Medium,
-    ScanConfidence::Confirmed
+    ScanConfidence::Medium
 );

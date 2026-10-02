@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Sentinel — 10 UI Concepts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&family=Space+Mono:wght@400;700&family=VT323&family=Archivo:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+
+/* ============ CONCEPT TOKENS ============ */
+/* 1 OLED Terminal */
+body[data-c="1"]{
+  --bg:#000503; --panel:#021009; --raised:#03180e; --line:#0d3a26; --soft:#07230f;
+  --fg:#d2ffe8; --dim:#57b98d; --mute:#2a7a55;
+  --acc:#00ff88; --acc2:#00c46a; --sevc:#ff3b5c; --sevh:#ff8a3d; --sevm:#ffd23d; --sevl:#00c46a;
+  --font:'JetBrains Mono',monospace; --radius:2px; --bord:1px solid var(--line); --density:12px;
+}
+/* 2 Tactical HUD */
+body[data-c="2"]{
+  --bg:#060d14; --panel:#0a1620; --raised:#0d1e2b; --line:#123347; --soft:#0f2836;
+  --fg:#cfe8f7; --dim:#7ba6bf; --mute:#43647a;
+  --acc:#00d4ff; --acc2:#0891b2; --sevc:#ff3b5c; --sevh:#ff8a3d; --sevm:#ffd23d; --sevl:#00d4ff;
+  --font:'IBM Plex Mono',monospace; --radius:0px; --bord:1px solid var(--line); --density:10px;
+}
+/* 3 Light Pro */
+body[data-c="3"]{
+  --bg:#ffffff; --panel:#fafafa; --raised:#f4f4f5; --line:#e4e4e7; --soft:#f4f4f5;
+  --fg:#18181b; --dim:#52525b; --mute:#a1a1aa;
+  --acc:#4f46e5; --acc2:#4338ca; --sevc:#dc2626; --sevh:#ea580c; --sevm:#d97706; --sevl:#2563eb;
+  --font:'Inter',sans-serif; --radius:8px; --bord:1px solid var(--line); --density:16px;
+}
+/* 4 Brutalist Ops */
+body[data-c="4"]{
+  --bg:#f5f0e6; --panel:#fffdf7; --raised:#efe9db; --line:#111111; --soft:#e8e1d1;
+  --fg:#111111; --dim:#444444; --mute:#777777;
+  --acc:#111111; --acc2:#000; --hi:#ffd400; --sevc:#d2042d; --sevh:#e8590c; --sevm:#b8860b; --sevl:#0066b2;
+  --font:'Space Grotesk',sans-serif; --radius:0px; --bord:2px solid var(--line); --density:14px;
+}
+/* 5 Glass Dark */
+body[data-c="5"]{
+  --bg:linear-gradient(135deg,#170f2b 0%,#0c1230 55%,#0a1e2e 100%); --panel:rgba(255,255,255,.055);
+  --raised:rgba(255,255,255,.09); --line:rgba(255,255,255,.12); --soft:rgba(255,255,255,.07);
+  --fg:#eceaf6; --dim:#a79fc4; --mute:#6e6591;
+  --acc:#a78bfa; --acc2:#8b5cf6; --sevc:#fb7185; --sevh:#fb923c; --sevm:#fbbf24; --sevl:#60a5fa;
+  --font:'Inter',sans-serif; --radius:12px; --bord:1px solid var(--line); --density:14px;
+}
+/* 6 Neon */
+body[data-c="6"]{
+  --bg:#0b0313; --panel:#130720; --raised:#1a0c2d; --line:#3d1152; --soft:#241040;
+  --fg:#f3e8ff; --dim:#b587d6; --mute:#71438f;
+  --acc:#ff2ec4; --acc2:#00e5ff; --sevc:#ff2e63; --sevh:#ff6b35; --sevm:#ffc300; --sevl:#00e5ff;
+  --font:'Space Grotesk',sans-serif; --radius:6px; --bord:1px solid var(--line); --density:12px;
+}
+/* 7 Swiss Mono */
+body[data-c="7"]{
+  --bg:#fafafa; --panel:#ffffff; --raised:#f0f0f0; --line:#d9d9d9; --soft:#ececec;
+  --fg:#111111; --dim:#555555; --mute:#999999;
+  --acc:#e11d48; --acc2:#be123c; --sevc:#e11d48; --sevh:#111111; --sevm:#555555; --sevl:#999999;
+  --font:'Inter',sans-serif; --mono:'Space Mono',monospace; --radius:0px; --bord:1px solid var(--line); --density:18px;
+}
+/* 8 Cyber Amber */
+body[data-c="8"]{
+  --bg:#141008; --panel:#1c150c; --raised:#241b0f; --line:#3e2f14; --soft:#2b2010;
+  --fg:#ffe6c0; --dim:#c39a56; --mute:#8a6d3b;
+  --acc:#ffb000; --acc2:#e09000; --sevc:#ff4d2e; --sevh:#ff7a1a; --sevm:#ffb000; --sevl:#d4a017;
+  --font:'VT323',monospace; --radius:0px; --bord:1px solid var(--line); --density:10px;
+}
+/* 9 Linear Soft Dark */
+body[data-c="9"]{
+  --bg:#0d0e12; --panel:#16171d; --raised:#1d1f27; --line:#272933; --soft:#20222b;
+  --fg:#e8e9f0; --dim:#9298a8; --mute:#5b6070;
+  --acc:#7c6cff; --acc2:#6a58f2; --sevc:#f87171; --sevh:#fb923c; --sevm:#fbbf24; --sevl:#818cf8;
+  --font:'Inter',sans-serif; --mono:'JetBrains Mono',monospace; --radius:10px; --bord:1px solid var(--line); --density:14px;
+}
+/* 10 Retro Beige */
+body[data-c="10"]{
+  --bg:#f0e6d2; --panel:#fff8ec; --raised:#e8dcc2; --line:#4a3521; --soft:#e0d2b4;
+  --fg:#3d2c1a; --dim:#6d5236; --mute:#94794f;
+  --acc:#b36b00; --acc2:#8a5200; --sevc:#a61b1b; --sevh:#c2570a; --sevm:#b8860b; --sevl:#3a6ea5;
+  --font:'VT323',monospace; --radius:0px; --bord:2px solid var(--line); --density:12px;
+}
+
+body { background:var(--bg); color:var(--fg); font-family:var(--font); font-size:13px; height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+/* ============ CONCEPT SWITCHER ============ */
+.switcher { display:flex; gap:0; overflow-x:auto; background:#0b0d12; border-bottom:1px solid #1f232c; flex-shrink:0; z-index:50; }
+.switcher button { all:unset; cursor:pointer; padding:10px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; color:#8a93a6; white-space:nowrap; border-right:1px solid #1f232c; }
+.switcher button:hover { color:#fff; background:#161a22; }
+.switcher button.on { color:#fff; background:#1c212b; box-shadow:inset 0 -2px 0 #4f8cff; }
+.switcher button b { color:#4f8cff; margin-right:6px; }
+
+/* ============ APP SHELL ============ */
+.app { flex:1; display:flex; min-height:0; }
+.side { width:190px; flex-shrink:0; background:var(--panel); border-right:var(--bord); padding:var(--density); display:flex; flex-direction:column; gap:2px; overflow-y:auto; }
+.logo { font-weight:700; letter-spacing:.12em; margin-bottom:calc(var(--density)*0.8); display:flex; align-items:center; gap:8px; }
+.logo .dot { width:9px; height:9px; background:var(--acc); border-radius:50%; box-shadow:0 0 8px var(--acc); }
+.nav { padding:7px 9px; color:var(--dim); cursor:pointer; border-radius:var(--radius); transition:all .15s; }
+.nav:hover { background:var(--raised); color:var(--fg); }
+.nav.on { background:var(--raised); color:var(--fg); border-left:2px solid var(--acc); }
+.nav .n { float:right; font-size:10px; color:var(--sevc); }
+.main { flex:1; min-width:0; display:flex; flex-direction:column; overflow-y:auto; }
+
+/* topbar */
+.top { display:flex; align-items:center; gap:10px; padding:calc(var(--density)*0.7) var(--density); background:var(--panel); border-bottom:var(--bord); flex-shrink:0; }
+.top .sel { border:var(--bord); background:var(--raised); color:var(--dim); padding:4px 10px; border-radius:var(--radius); font-size:11px; }
+.top .cmd { margin-left:auto; border:var(--bord); background:var(--raised); color:var(--mute); padding:4px 10px; border-radius:var(--radius); font-size:11px; cursor:pointer; }
+.top .cmd:hover { color:var(--fg); border-color:var(--acc); }
+.pill { padding:2px 8px; border-radius:999px; font-size:10px; font-weight:600; }
+.p-c { background:color-mix(in srgb,var(--sevc) 15%,transparent); color:var(--sevc); border:1px solid color-mix(in srgb,var(--sevc) 40%,transparent); }
+.p-h { background:color-mix(in srgb,var(--sevh) 15%,transparent); color:var(--sevh); border:1px solid color-mix(in srgb,var(--sevh) 40%,transparent); }
+.p-m { background:color-mix(in srgb,var(--sevm) 15%,transparent); color:var(--sevm); border:1px solid color-mix(in srgb,var(--sevm) 40%,transparent); }
+
+.content { padding:var(--density); display:grid; gap:var(--density); }
+.stats { display:grid; grid-template-columns:repeat(4,1fr); gap:var(--density); }
+.stat { background:var(--panel); border:var(--bord); border-radius:var(--radius); padding:var(--density); }
+.stat .l { font-size:10px; color:var(--mute); text-transform:uppercase; letter-spacing:.1em; }
+.stat .v { font-size:22px; font-weight:700; margin-top:4px; font-family:var(--mono,'JetBrains Mono'); }
+.stat .s { font-size:10px; color:var(--dim); margin-top:2px; }
+.row2 { display:grid; grid-template-columns:3fr 2fr; gap:var(--density); }
+
+/* table */
+.tbl { background:var(--panel); border:var(--bord); border-radius:var(--radius); overflow:hidden; }
+table { width:100%; border-collapse:collapse; font-family:var(--mono,'JetBrains Mono'); font-size:11px; }
+th { text-align:left; padding:8px 10px; color:var(--mute); font-size:9px; text-transform:uppercase; letter-spacing:.1em; border-bottom:var(--bord); background:var(--raised); }
+td { padding:6px 10px; border-bottom:1px solid var(--soft); color:var(--dim); }
+tbody tr { cursor:pointer; transition:background .1s; }
+tbody tr:hover, tbody tr.sel { background:var(--raised); }
+.m { padding:1px 6px; border-radius:var(--radius); font-size:10px; }
+.m1 { background:color-mix(in srgb,var(--acc) 15%,transparent); color:var(--acc); }
+.m2 { background:color-mix(in srgb,var(--sevh) 15%,transparent); color:var(--sevh); }
+.ok { color:var(--sevl); } .bad { color:var(--sevc); } .warn { color:var(--sevm); }
+.tfoot { padding:6px 10px; font-size:10px; color:var(--mute); border-top:var(--bord); display:flex; gap:12px; }
+
+/* panel */
+.pane { background:var(--panel); border:var(--bord); border-radius:var(--radius); display:flex; flex-direction:column; min-height:0; }
+.pane .hd { display:flex; gap:6px; align-items:center; padding:8px 10px; border-bottom:var(--bord); }
+.tab { padding:3px 9px; font-size:11px; color:var(--dim); cursor:pointer; border-radius:var(--radius); }
+.tab.on { background:var(--raised); color:var(--fg); }
+pre.body { padding:12px; font-family:var(--mono,'JetBrains Mono'); font-size:11px; line-height:1.7; color:var(--dim); overflow:auto; flex:1; }
+.k { color:var(--mute); } .hl { color:var(--sevc); background:color-mix(in srgb,var(--sevc) 10%,transparent); padding:0 2px; border-radius:2px; } .a { color:var(--acc); }
+.fbar { border-top:var(--bord); padding:6px 10px; font-size:10px; color:var(--mute); display:flex; gap:10px; }
+
+/* finding card */
+.find { background:var(--panel); border:var(--bord); border-left:3px solid var(--sevc); border-radius:var(--radius); padding:var(--density); cursor:pointer; transition:background .15s; }
+.find:hover { background:var(--raised); }
+.find .t { display:flex; align-items:center; gap:8px; }
+.find .t .nm { font-weight:600; font-size:13px; }
+.find .t .ref { font-family:var(--mono,'JetBrains Mono'); font-size:10px; color:var(--mute); }
+.find .d { margin-top:6px; color:var(--dim); font-size:12px; }
+.find .m2x { margin-top:8px; display:flex; gap:6px; font-size:10px; color:var(--mute); }
+.tag { border:1px solid var(--line); border-radius:var(--radius); padding:1px 7px; }
+.tag.ok { border-color:color-mix(in srgb,var(--sevl) 40%,transparent); color:var(--sevl); }
+.find.h { border-left-color:var(--sevh); }
+.find.m { border-left-color:var(--sevm); }
+.descbar { padding:var(--density); background:var(--panel); border:var(--bord); border-radius:var(--radius); font-family:var(--mono,'JetBrains Mono'); font-size:10px; color:var(--mute); display:flex; gap:8px; flex-wrap:wrap; }
+.descbar span b { color:var(--acc); font-weight:500; }
+
+/* per-concept structure tweaks */
+body[data-c="4"] .side, body[data-c="7"] .side { display:none; }
+body[data-c="4"] .top::before, body[data-c="7"] .top::before { content:"SENTINEL"; font-weight:900; letter-spacing:.15em; font-size:14px; margin-right:16px; color:var(--fg); }
+body[data-c="4"] .top .topnav, body[data-c="7"] .top .topnav { display:flex; gap:4px; }
+body[data-c="4"] .logo, body[data-c="7"] .logo { display:none; }
+body[data-c="3"] .logo .dot, body[data-c="7"] .logo .dot, body[data-c="4"] .logo .dot, body[data-c="10"] .logo .dot { box-shadow:none; }
+body[data-c="5"] .side, body[data-c="5"] .stat, body[data-c="5"] .pane, body[data-c="5"] .tbl, body[data-c="5"] .find, body[data-c="5"] .top { backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+body[data-c="6"] .logo, body[data-c="6"] .stat .v { text-shadow:0 0 12px var(--acc); }
+body[data-c="6"] .nav.on { border-left-color:var(--acc2); box-shadow:inset 2px 0 0 var(--acc2); }
+body[data-c="8"] body, body[data-c="8"] .stat .v { font-size:18px; }
+body[data-c="8"] .stat .v { font-size:26px; }
+body[data-c="10"] .find, body[data-c="10"] .stat { box-shadow:2px 2px 0 var(--line); }
+body[data-c="9"] .app { background:radial-gradient(ellipse 80% 50% at 50% -10%, rgba(124,108,255,.13), transparent); }
+body[data-c="4"] .nav.on { border-left:none; outline:2px solid var(--line); outline-offset:-2px; }
+body[data-c="4"] .hl { background:var(--hi); color:#111; }
+body[data-c="7"] .stat .v { font-family:'Space Mono',monospace; }
+body[data-c="2"] .stat, body[data-c="2"] .pane, body[data-c="2"] .tbl { position:relative; }
+body[data-c="2"] .pane::after { content:""; position:absolute; top:-1px; right:-1px; width:10px; height:10px; border-top:2px solid var(--acc); border-right:2px solid var(--acc); }
+.topnav { display:none; }
+</style>
+</head>
+<body data-c="1">
+
+<div class="switcher" id="sw"></div>
+
+<div class="app">
+  <aside class="side">
+    <div class="logo"><span class="dot"></span>SENTINEL</div>
+    <div class="nav on">⌂ Home</div>
+    <div class="nav">⇄ Proxy / Traffic <span class="n">7</span></div>
+    <div class="nav">▲ Findings</div>
+    <div class="nav">◎ Scanner</div>
+    <div class="nav">▤ Reports</div>
+    <div class="nav">⚙ Settings</div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <div class="topnav">
+        <div class="nav on" style="border-left:none">Home</div><div class="nav" style="border-left:none">Traffic</div><div class="nav" style="border-left:none">Findings</div><div class="nav" style="border-left:none">Reports</div>
+      </div>
+      <span class="sel">◆ Acme Corp — Web Pentest</span>
+      <span class="cmd">⌕ Command… <b style="color:var(--mute)">Ctrl K</b></span>
+    </div>
+
+    <div class="content">
+      <div class="stats">
+        <div class="stat"><div class="l">Requests</div><div class="v">14,208</div><div class="s">+312 last 5 min</div></div>
+        <div class="stat"><div class="l">Active Scans</div><div class="v">3</div><div class="s">WSTG v4.2</div></div>
+        <div class="stat"><div class="l">Findings</div><div class="v" style="color:var(--sevc)">7<span style="color:var(--dim)">/23</span></div><div class="s">verified / total</div></div>
+        <div class="stat"><div class="l">Coverage</div><div class="v">68%</div><div class="s">in-scope endpoints</div></div>
+      </div>
+
+      <div class="descbar">
+        <span>phase: <b>ACTIVE_SCAN</b></span><span>proxy: <b>127.0.0.1:8080</b></span><span>engine: <b>tokio · 4 workers</b></span><span>db: <b>sentinel.db · 110KB</b></span>
+      </div>
+
+      <div class="row2">
+        <div class="tbl">
+          <table>
+            <thead><tr><th>Method</th><th>URL</th><th>Status</th><th>Size</th><th>Time</th></tr></thead>
+            <tbody>
+              <tr class="sel"><td><span class="m m1">GET</span></td><td>api.acme.com/v1/users?id=1<span class="hl">'</span></td><td class="bad">500</td><td>1.2k</td><td>842ms</td></tr>
+              <tr><td><span class="m m1">GET</span></td><td>acme.com/search?q=&lt;script&gt;</td><td class="ok">200</td><td>18k</td><td>231ms</td></tr>
+              <tr><td><span class="m m2">POST</span></td><td>api.acme.com/graphql</td><td class="ok">200</td><td>4.4k</td><td>96ms</td></tr>
+              <tr><td><span class="m m2">POST</span></td><td>api.acme.com/v1/auth/token</td><td class="ok">200</td><td>640</td><td>510ms</td></tr>
+              <tr><td><span class="m m1">GET</span></td><td>acme.com/admin/</td><td class="warn">302</td><td>0</td><td>18ms</td></tr>
+            </tbody>
+          </table>
+          <div class="tfoot"><span>● live tail</span><span>14,208 req</span><span style="margin-left:auto">h2 68% · h1 29% · h3 3%</span></div>
+        </div>
+
+        <div class="pane">
+          <div class="hd"><span class="tab on">Request</span><span class="tab">Response</span><span class="tab">Raw</span></div>
+          <pre class="body"><span class="a">GET</span> /v1/users?id=1<span class="hl">' OR 1=1--</span> HTTP/2
+<span class="k">Host:</span> api.acme.com
+<span class="k">Authorization:</span> Bearer eyJhbGciOiJIUzI1Ni…
+<span class="k">Cookie:</span> session=ab83f2…
+
+<span class="k">-- payload --</span>
+id=1<span class="hl">' OR 1=1--</span></pre>
+          <div class="fbar"><span>HTTP/2</span><span>·</span><span>217 B</span><span style="margin-left:auto;color:var(--sevc)">1 finding linked</span></div>
+        </div>
+      </div>
+
+      <div class="find">
+        <div class="t"><span class="pill p-c">CRITICAL</span><span class="nm">SQL Injection — Boolean-based</span><span class="ref">WSTG-INPV-05</span><span class="ref" style="margin-left:auto">14:22</span></div>
+        <div class="d">GET /api/v1/users?id=<b>1' OR 1=1--</b> → full table dump. Verified boolean + time-based.</div>
+        <div class="m2x"><span class="tag">evidence ×3</span><span class="tag ok">verified</span><span class="tag">duplicates: 2 merged</span></div>
+      </div>
+      <div class="find h">
+        <div class="t"><span class="pill p-h">HIGH</span><span class="nm">Reflected XSS</span><span class="ref">WSTG-INPV-02</span><span class="ref" style="margin-left:auto">14:07</span></div>
+        <div class="d">GET /search?q=<b>&lt;script&gt;</b> — reflection confirmed, no encoding.</div>
+      </div>
+      <div class="find m">
+        <div class="t"><span class="pill p-m">MEDIUM</span><span class="nm">JWT HS256 + weak secret</span><span class="ref">WSTG-SESS-10</span><span class="ref" style="margin-left:auto">13:51</span></div>
+        <div class="d">alg=HS256, secret cracked in 41s. Recommend RS256 + rotation.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const C = [
+  ["1","OLED TERMINAL"], ["2","TACTICAL HUD"], ["3","LIGHT PRO"], ["4","BRUTALIST"],
+  ["5","GLASS DARK"], ["6","NEON GRID"], ["7","SWISS MONO"], ["8","CYBER AMBER"],
+  ["9","SOFT DARK (Linear-like)"], ["10","RETRO PAPER"]
+];
+const sw = document.getElementById('sw');
+function setc(n){
+  document.body.dataset.c = n;
+  [...sw.children].forEach(b => b.classList.toggle('on', b.dataset.c === n));
+}
+C.forEach(([n,name]) => {
+  const b = document.createElement('button');
+  b.dataset.c = n; b.innerHTML = `<b>${n}</b>${name}`;
+  b.onclick = () => setc(n);
+  sw.appendChild(b);
+});
+setc('1');
+</script>
+</body>
+</html>

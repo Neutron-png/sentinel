@@ -1,4 +1,4 @@
-use crate::network::models::{HttpBody, HttpRequest, HttpResponse};
+use crate::network::models::{HttpRequest, HttpResponse};
 use crate::scanner::payload::engine::PayloadEngine;
 use crate::scanner::payload::models::InsertionPoint;
 use crate::scanner::rules::active::sqli::techniques::{SqliFinding, SqliTechnique};
@@ -35,17 +35,22 @@ impl SqliTechnique for BooleanBasedTechnique {
     ) -> Option<SqliFinding> {
         let baseline_len = baseline.body.as_text().map(|s| s.len()).unwrap_or(0);
         let test_len = test.body.as_text().map(|s| s.len()).unwrap_or(0);
-        let diff = if baseline_len > test_len { baseline_len - test_len } else { test_len - baseline_len };
-
-        if diff > 100 && payload == "false" {
+        let diff = baseline_len.abs_diff(test_len);
+        // Require a material relative or absolute change, and only for the
+        // false-condition payload. A boolean-based conclusion needs the
+        // true/false pair compared; a single response is a candidate only.
+        let threshold = (baseline_len / 5).max(200);
+        if payload == "false" && diff > threshold && test_len < baseline_len {
             Some(SqliFinding {
                 technique: self.name().to_string(),
                 parameter: "query".to_string(),
                 payload: payload.to_string(),
-                confidence: crate::scanner::sdk::result::RuleConfidence::Medium,
+                confidence: crate::scanner::sdk::result::RuleConfidence::Low,
                 database_hint: None,
-                evidence: format!("Boolean-based SQLi detected.\nRequest: {}\nBaseline length: {}\nTest length: {}\nDifference: {}",
-                    original_request.url, baseline_len, test_len, diff),
+                evidence: format!(
+                    "The false-condition response differs materially from the baseline.\nRequest: {}\nBaseline length: {}\nTest length: {}\nDifference: {}\nStatus: Potential - confirm by comparing the true- and false-condition responses side by side.",
+                    original_request.url, baseline_len, test_len, diff
+                ),
             })
         } else { None }
     }

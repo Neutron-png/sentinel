@@ -5,5 +5,6 @@ pub mod export;
 pub mod hash;
 pub mod linker;
 pub mod models;
+pub mod protocol;
 pub mod search;
 pub mod storage;

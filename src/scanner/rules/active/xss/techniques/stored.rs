@@ -2,7 +2,8 @@ use crate::network::models::{HttpRequest, HttpResponse};
 use crate::scanner::analyzer::engine::ResponseAnalyzer;
 use crate::scanner::payload::engine::PayloadEngine;
 use crate::scanner::payload::models::InsertionPoint;
-use crate::scanner::rules::active\xss\techniques::{XssFinding, XssTechnique};
+use crate::scanner::sdk::result::RuleConfidence;
+use crate::scanner::rules::active::xss::techniques::{raw_reflection, XssFinding, XssTechnique};
 
 pub struct StoredXss;
 
@@ -23,16 +24,16 @@ impl XssTechnique for StoredXss {
     }
 
     fn analyze(&self, analyzer: &ResponseAnalyzer, request: &HttpRequest, response: &HttpResponse, payload: &str) -> Option<XssFinding> {
-        let refl = analyzer.detect_reflection(response, payload);
-        if refl.found {
-            Some(XssFinding {
-                technique: self.name().to_string(),
-                injection_point: request.url.clone(),
-                payload: payload.to_string(),
-                confidence: crate::scanner::sdk::result::RuleConfidence::Low,
-                evidence: format!("Potential stored XSS payload submitted.\nURL: {}\nPayload: {}\nResponse reflection: {:?}",
-                    request.url, payload, refl.reflection_type),
-            })
-        } else { None }
+        let refl = raw_reflection(analyzer, response, payload)?;
+        Some(XssFinding {
+            technique: self.name().to_string(),
+            injection_point: request.url.clone(),
+            payload: payload.to_string(),
+            confidence: RuleConfidence::Low,
+            evidence: format!(
+                "The injected value was reflected verbatim (unescaped) in the immediate response.\nURL: {}\nPayload: {}\nContext: {}\nStatus: Potential - this single response does not establish persistence. Stored XSS requires a separate request confirming the value is served unescaped from storage; manual verification is required.",
+                request.url, payload, refl.context
+            ),
+        })
     }
 }

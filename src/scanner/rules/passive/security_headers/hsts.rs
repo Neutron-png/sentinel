@@ -9,5 +9,5 @@ define_header_rule!(
     "HTTP Strict Transport Security (HSTS) is not configured.",
     "OWASP WSTG-CONF-01\nMDN: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Strict-Transport-Security\nRFC 6797: HTTP Strict Transport Security\nCWE-319: Cleartext Transmission of Sensitive Information",
     ScanSeverity::Medium,
-    ScanConfidence::Confirmed
+    ScanConfidence::Medium
 );

@@ -59,12 +59,30 @@ impl PipelineExecutor {
         // Stage: Validate
         progress.current_stage = PipelineStage::Validate;
 
+        // Stage: Baseline — send the unmutated target request once so that
+        // differential rules can compare injected responses against genuine
+        // baseline behaviour. Without this, a rule would have no baseline.
+        let baseline_ctx = crate::scanner::sdk::context::ScanRuleContext::new(client.clone(), target);
+        let baseline_request = baseline_ctx.build_get("/");
+        let baseline = if *cancel_rx.borrow() {
+            None
+        } else {
+            match self
+                .execute_request_with_retry(&client, &baseline_request, &cancel_rx)
+                .await
+            {
+                Ok(resp) => Some(resp),
+                Err(_) => {
+                    progress.error_count += 1;
+                    None
+                }
+            }
+        };
+
         // Stage: Generate Requests
         progress.current_stage = PipelineStage::GenerateRequests;
         let _ctx = PipelineContext::new(client.clone(), target, &metadata.id, cancel_rx.clone());
-        let requests: Vec<HttpRequest> = rule.build_requests(
-            &crate::scanner::sdk::context::ScanRuleContext::new(client.clone(), target),
-        );
+        let requests: Vec<HttpRequest> = rule.build_requests(&baseline_ctx);
 
         // Stage: Execute Requests
         progress.current_stage = PipelineStage::ExecuteRequests;
@@ -99,7 +117,10 @@ impl PipelineExecutor {
         // Stage: Analyze Responses
         progress.current_stage = PipelineStage::AnalyzeResponses;
         let mut results = Vec::new();
-        let sdk_ctx = crate::scanner::sdk::context::ScanRuleContext::new(client, target);
+        let mut sdk_ctx = crate::scanner::sdk::context::ScanRuleContext::new(client, target);
+        if let Some(resp) = baseline {
+            sdk_ctx = sdk_ctx.with_baseline(resp);
+        }
         for (req, resp_opt) in &responses {
             if let Some(resp) = resp_opt {
                 let rule_results = rule.execute(&sdk_ctx, req, resp);

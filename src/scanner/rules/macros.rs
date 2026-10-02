@@ -15,7 +15,7 @@ macro_rules! define_header_rule {
                     $desc,
                     " The ",
                     $header,
-                    " header is missing from the HTTP response."
+                    " header is missing from an HTML document response."
                 )
             }
             fn category(&self) -> &'static str {
@@ -33,9 +33,17 @@ macro_rules! define_header_rule {
 
             fn applies_to(
                 &self,
-                _request: &$crate::network::models::HttpRequest,
+                request: &$crate::network::models::HttpRequest,
                 response: &$crate::network::models::HttpResponse,
             ) -> bool {
+                if !$crate::scanner::passive::context::is_document_success(response) {
+                    return false;
+                }
+                if $header == "Strict-Transport-Security"
+                    && !$crate::scanner::passive::context::is_https(request)
+                {
+                    return false;
+                }
                 !response
                     .headers
                     .iter()
@@ -56,12 +64,27 @@ macro_rules! define_header_rule {
                     self.confidence(),
                 );
                 result.description = format!(
-                    "{} The '{}' HTTP response header is not present.",
-                    $desc, $header
+                    "{} The '{}' HTTP response header is not present on an HTML document response \
+                     (status {}, content-type {}). This is a configuration observation; whether it \
+                     represents an exploitable weakness depends on the application context and must \
+                     be confirmed manually.",
+                    $desc,
+                    $header,
+                    response.status_code,
+                    response
+                        .content_type
+                        .clone()
+                        .unwrap_or_else(|| "unknown".to_string())
                 );
                 result.evidence = format!(
-                    "Request URL: {}\nResponse headers present: {}",
+                    "Request: {} {}\nStatus: {}\nContent-Type: {}\nResponse headers present: {}",
+                    request.method,
                     request.url,
+                    response.status_code,
+                    response
+                        .content_type
+                        .clone()
+                        .unwrap_or_else(|| "unknown".to_string()),
                     response
                         .headers
                         .iter()

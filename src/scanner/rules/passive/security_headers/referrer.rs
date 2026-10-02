@@ -9,5 +9,5 @@ define_header_rule!(
     "The Referrer-Policy header is not set.",
     "OWASP WSTG-CONF-04\nMDN: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Referrer-Policy\nCWE-200: Exposure of Sensitive Information",
     ScanSeverity::Low,
-    ScanConfidence::Confirmed
+    ScanConfidence::Medium
 );
