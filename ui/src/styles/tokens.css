@@ -1,0 +1,130 @@
+/* Sentinel "Evidence Grade" tokens. Single source of truth: design/DESIGN.md section 3.
+   Components never use raw colors, sizes or durations; they read these. */
+
+:root {
+  color-scheme: dark;
+
+  /* Neutrals, dark (default for the app: long sessions) */
+  --bg-0: oklch(0.165 0.01 290);
+  --bg-1: oklch(0.195 0.011 290);
+  --bg-2: oklch(0.225 0.013 290);
+  --bg-3: oklch(0.255 0.014 290);
+  --bg-4: oklch(0.285 0.019 290);
+  --line-1: oklch(0.275 0.013 290);
+  --line-2: oklch(0.345 0.014 290);
+  --fg-1: oklch(0.955 0.006 290);
+  --fg-2: oklch(0.80 0.013 290);
+  --fg-3: oklch(0.66 0.016 290);
+  --fg-4: oklch(0.50 0.016 290);
+  --ink: var(--fg-1);
+  --on-ink: var(--bg-0);
+
+  /* Brand violet from assets/logo.svg (#7a3cf0). Focus, selection, live, links, the mark. */
+  --acc: oklch(0.74 0.16 293);
+  --acc-solid: oklch(0.55 0.23 293);
+  --acc-wash: oklch(0.62 0.2 293 / 0.16);
+  --acc-line: oklch(0.74 0.16 293 / 0.5);
+  --lattice: oklch(0.74 0.16 293 / 0.11);
+
+  /* Severity: marks only, never large fills */
+  --sev-critical: oklch(0.68 0.19 25);
+  --sev-high: oklch(0.75 0.14 52);
+  --sev-medium: oklch(0.84 0.12 88);
+  --sev-low: oklch(0.74 0.06 235);
+  --sev-info: var(--fg-3);
+  --ok: oklch(0.78 0.09 150);
+  --warn: var(--sev-medium);
+  --bad: var(--sev-critical);
+  --bad-wash: oklch(0.68 0.19 25 / 0.12);
+
+  /* Syntax for raw HTTP */
+  --syn-method: var(--fg-1);
+  --syn-header: oklch(0.80 0.06 200);
+  --syn-value: var(--fg-2);
+  --syn-delta: oklch(0.84 0.12 88 / 0.22);
+
+  /* Elevation: floating surfaces only */
+  --shadow-float: 0 1px 2px oklch(0.1 0.016 290 / 0.25), 0 12px 32px -8px oklch(0.1 0.016 290 / 0.45);
+  --scrim: oklch(0.1 0.016 290 / 0.55);
+
+  /* Type */
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+  --t-micro: 11px;
+  --t-small: 12px;
+  --t-body: 13px;
+  --t-strong: 14px;
+  --t-h3: 16px;
+  --t-h2: 20px;
+  --t-h1: 26px;
+
+  /* Space (4px base) */
+  --s-1: 2px;
+  --s-2: 4px;
+  --s-3: 8px;
+  --s-4: 12px;
+  --s-5: 16px;
+  --s-6: 24px;
+  --s-7: 32px;
+  --s-8: 48px;
+  --s-9: 64px;
+
+  /* Radius vocabulary: 0 panes, 4 controls, 8 floating */
+  --r-control: 4px;
+  --r-float: 8px;
+
+  /* Layout */
+  --sidebar-w: 216px;
+  --topbar-h: 44px;
+  --row-compact: 32px;
+  --row-comfortable: 40px;
+
+  /* Motion (transitions.dev scale) */
+  --d-press: 120ms;
+  --d-quick: 150ms;
+  --d-fast: 250ms;
+  --d-toast-in: 350ms;
+  --d-toast-out: 250ms;
+  --d-row-flash: 600ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-move: cubic-bezier(0.77, 0, 0.175, 1);
+  --modal-scale: 0.96;
+  --toast-distance: 16px;
+  --toast-scale: 0.97;
+  --blur-small: 2px;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg-0: oklch(0.975 0.006 290);
+  --bg-1: oklch(0.993 0.003 290);
+  --bg-2: oklch(0.958 0.008 290);
+  --bg-3: oklch(0.935 0.01 290);
+  --bg-4: oklch(0.915 0.019 290);
+  --line-1: oklch(0.905 0.01 290);
+  --line-2: oklch(0.84 0.013 290);
+  --fg-1: oklch(0.22 0.016 290);
+  --fg-2: oklch(0.40 0.016 290);
+  --fg-3: oklch(0.52 0.016 290);
+  --fg-4: oklch(0.70 0.013 290);
+  --on-ink: oklch(0.985 0.005 290);
+
+  --acc: oklch(0.50 0.22 292);
+  --acc-solid: oklch(0.50 0.22 292);
+  --acc-wash: oklch(0.50 0.22 292 / 0.10);
+  --acc-line: oklch(0.50 0.22 292 / 0.45);
+  --lattice: oklch(0.50 0.22 292 / 0.09);
+
+  --sev-critical: oklch(0.55 0.20 27);
+  --sev-high: oklch(0.60 0.15 50);
+  --sev-medium: oklch(0.66 0.13 80);
+  --sev-low: oklch(0.55 0.08 240);
+  --ok: oklch(0.52 0.10 150);
+  --bad-wash: oklch(0.55 0.20 27 / 0.08);
+
+  --syn-header: oklch(0.45 0.07 210);
+  --syn-delta: oklch(0.85 0.13 88 / 0.45);
+
+  --shadow-float: 0 1px 2px oklch(0.3 0.016 290 / 0.08), 0 12px 32px -8px oklch(0.3 0.016 290 / 0.18);
+  --scrim: oklch(0.3 0.016 290 / 0.28);
+}

@@ -74,6 +74,9 @@ pub struct RuleResult {
     pub references: String,
     pub evidence: String,
     pub transactions: Vec<uuid::Uuid>,
+    /// What the engine observed when this result was produced. Optional so
+    /// rules that do not capture exchanges keep working unchanged.
+    pub record: Option<super::record::VerificationRecord>,
 }
 
 impl RuleResult {
@@ -89,6 +92,7 @@ impl RuleResult {
             references: String::new(),
             evidence: String::new(),
             transactions: vec![],
+            record: None,
         }
     }
 
@@ -106,6 +110,10 @@ impl RuleResult {
     }
     pub fn with_evidence(mut self, e: &str) -> Self {
         self.evidence = e.into();
+        self
+    }
+    pub fn with_record(mut self, r: super::record::VerificationRecord) -> Self {
+        self.record = Some(r);
         self
     }
     pub fn with_transaction(mut self, id: uuid::Uuid) -> Self {

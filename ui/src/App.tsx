@@ -1,545 +1,397 @@
-import { useEffect, useState } from 'react'
-import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ArrowsLeftRight, Binary, CheckCircle, Crosshair, FileText, Gear, House, MagnifyingGlass, Moon,
+  PaperPlaneRight, ShieldCheck, Sun, Target, XCircle,
+} from '@phosphor-icons/react'
+import type { Icon } from '@phosphor-icons/react'
+import * as api from './lib/bridge'
+import { hostnameOf as hostnameOfTarget, inScope, needsDecision } from './lib/format'
+import type { Assessment, HistoryEntry, ProxyStatus, UiFinding, View } from './lib/types'
+import { AppContext, type AppState } from './state'
+import { CommandPalette, type Command } from './components/CommandPalette'
+import { Logo, Kbd } from './components/Marks'
+import { Modal } from './components/Modal'
+import { useToast } from './components/Toast'
+import { ErrorState } from './components/States'
+import { Overview } from './views/Overview'
+import { Proxy } from './views/Proxy'
+import { Repeater } from './views/Repeater'
+import { Scanner } from './views/Scanner'
+import { Decoder } from './views/Decoder'
+import { Findings } from './views/Findings'
+import { Reports } from './views/Reports'
+import { Settings } from './views/Settings'
 
-interface Assessment {
-  id: string
-  name: string
-  target: string
-  environment: string
-  scope: string
-  methodology: string
-  status: string
-  created_at: string
-  updated_at: string
-}
-
-interface Finding {
-  id: string
-  assessment_id: string
-  title: string
-  description: string
-  severity: string
-  confidence: string
-  status: string
-}
-
-interface HistoryEntry {
-  id: string
-  timestamp: string
-  method: string
-  scheme: string
-  host: string
-  port: number
-  path: string
-  query: string
-  url: string
-  protocol: string
-  status_code: number
-  request_size: number
-  response_size: number
-  duration_ms: number
-  tls_enabled: boolean
-  request_headers: string
-  response_headers: string
-}
-
-interface RepeaterResponse {
-  status_code: number
-  status_text: string
-  protocol: string
-  url: string
-  headers_text: string
-  body: string
-  duration_ms: number
-}
-
-interface ProxyStatus {
-  listening: boolean
-  port: number
-  tor_enabled: boolean
-  tor_addr: string
-}
-
-type View = 'home' | 'traffic' | 'findings' | 'repeater' | 'scanner' | 'reports' | 'settings'
-
-const NAV: { id: View; label: string; icon: string }[] = [
-  { id: 'home', label: 'Home', icon: '⌂' },
-  { id: 'traffic', label: 'Proxy / Traffic', icon: '⇄' },
-  { id: 'findings', label: 'Findings', icon: '▲' },
-  { id: 'repeater', label: 'Repeater', icon: '↻' },
-  { id: 'scanner', label: 'Scanner', icon: '◎' },
-  { id: 'reports', label: 'Reports', icon: '▤' },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
+/* Primary nav follows the journey: scope, capture, test, decide, report. */
+const NAV: { id: View; label: string; icon: Icon }[] = [
+  { id: 'overview', label: 'Project', icon: House },
+  { id: 'proxy', label: 'Proxy', icon: ArrowsLeftRight },
+  { id: 'repeater', label: 'Repeater', icon: PaperPlaneRight },
+  { id: 'scanner', label: 'Scanner', icon: Crosshair },
+  { id: 'findings', label: 'Findings', icon: ShieldCheck },
+  { id: 'reports', label: 'Reports', icon: FileText },
+]
+const UTILITY: { id: View; label: string; icon: Icon }[] = [
+  { id: 'decoder', label: 'Decoder', icon: Binary },
+  { id: 'settings', label: 'Settings', icon: Gear },
 ]
 
-const SEV_CLASS: Record<string, string> = {
-  Critical: 'sev-crit',
-  High: 'sev-high',
-  Medium: 'sev-med',
-  Low: 'sev-low',
-  Informational: 'sev-info',
+const VIEWS: View[] = ['overview', 'proxy', 'repeater', 'scanner', 'decoder', 'findings', 'reports', 'settings']
+const viewFromHash = (): View => {
+  const v = location.hash.replace(/^#\/?/, '').split('?')[0] as View
+  return VIEWS.includes(v) ? v : 'overview'
 }
 
-function App() {
-  const [view, setView] = useState<View>('home')
+function readTheme(): 'dark' | 'light' {
+  const q = new URLSearchParams(location.search).get('theme')
+  if (q === 'light' || q === 'dark') return q
+  try {
+    const s = localStorage.getItem('sentinel.theme')
+    if (s === 'light' || s === 'dark') return s
+  } catch { /* storage unavailable */ }
+  return 'dark'
+}
+
+const clean = (e: unknown) => String(e).replace(/^Error:\s*/, '')
+const hostOf = (target: string) => {
+  try { return new URL(/^https?:\/\//i.test(target) ? target : `https://${target}`).host } catch { return target }
+}
+
+const DEFAULT_REQ = 'GET / HTTP/1.1\r\nHost: portal.halden-freight.test\r\nAccept: text/html\r\nConnection: close\r\n\r\n'
+
+export default function App() {
+  const toast = useToast()
+  const [view, setView] = useState<View>(viewFromHash)
+  const [theme, setTheme] = useState(readTheme)
+  const [palette, setPalette] = useState(false)
+
   const [assessments, setAssessments] = useState<Assessment[]>([])
-  const [findings, setFindings] = useState<Finding[]>([])
-  const [selected, setSelected] = useState<Assessment | null>(null)
-  const [showNew, setShowNew] = useState(false)
-  const [error, setError] = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [findings, setFindings] = useState<UiFinding[]>([])
+  const [findingsLoading, setFindingsLoading] = useState(true)
+  const [focusFinding, setFocusFinding] = useState<string | null>(null)
+  const [proxy, setProxy] = useState<ProxyStatus | null>(null)
   const [traffic, setTraffic] = useState<HistoryEntry[]>([])
-  const [selectedEntry, setSelectedEntry] = useState<HistoryEntry | null>(null)
-  const [proxyStatus, setProxyStatus] = useState<ProxyStatus | null>(null)
-  const [torForm, setTorForm] = useState({ tor_enabled: false, tor_addr: '127.0.0.1:9050' })
-  const [repeaterReq, setRepeaterReq] = useState('GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n')
-  const [repeaterResp, setRepeaterResp] = useState<RepeaterResponse | null>(null)
-  const [sending, setSending] = useState(false)
-  const [form, setForm] = useState({
-    name: '',
-    target: '',
-    environment: 'Production',
-    scope: 'Web Application',
-    methodology: 'OWASP',
-  })
+  const [freshIds, setFreshIds] = useState<Set<string>>(new Set())
+  const [repeaterReq, setRepeaterReq] = useState(DEFAULT_REQ)
+  const [newOpen, setNewOpen] = useState(false)
+  const [projectsError, setProjectsError] = useState<string | null>(null)
+  const [findingsError, setFindingsError] = useState<string | null>(null)
+  const [trafficError, setTrafficError] = useState<string | null>(null)
+  const findingsReq = useRef(0)
 
-  async function load() {
-    try {
-      setAssessments(await invoke<Assessment[]>('list_assessments'))
-    } catch (e) {
-      setError(String(e))
-    }
-  }
+  const selected = assessments.find(a => a.id === selectedId) ?? null
 
-  async function loadFindings(a: Assessment) {
-    try {
-      setFindings(await invoke<Finding[]>('list_findings', { assessmentId: a.id }))
-    } catch (e) {
-      setError(String(e))
-    }
-  }
+  const fail = useCallback((e: unknown) => toast(String(e).replace(/^Error:\s*/, ''), 'bad'), [toast])
 
-  useEffect(() => { load() }, [])
+  const go = useCallback((v: View) => {
+    if (location.hash !== `#/${v}`) history.pushState(null, '', `#/${v}`)
+    setView(v)
+  }, [])
 
   useEffect(() => {
-    if (view !== 'traffic' && view !== 'settings') return
-    invoke<HistoryEntry[]>('list_traffic', { limit: 200 }).then(setTraffic).catch(e => setError(String(e)))
-    invoke<ProxyStatus>('proxy_status').then(s => {
-      setProxyStatus(s)
-      setTorForm({ tor_enabled: s.tor_enabled, tor_addr: s.tor_addr })
-    }).catch(e => setError(String(e)))
-    const un = listen<HistoryEntry>('traffic-captured', e => {
-      setTraffic(t => [e.payload, ...t].slice(0, 500))
-    })
-    return () => { un.then(f => f()) }
-  }, [view])
+    const on = () => setView(viewFromHash())
+    window.addEventListener('popstate', on)
+    window.addEventListener('hashchange', on)
+    return () => { window.removeEventListener('popstate', on); window.removeEventListener('hashchange', on) }
+  }, [])
 
-  async function createAssessment() {
-    try {
-      await invoke('create_assessment', {
-        name: form.name,
-        target: form.target,
-        environment: form.environment,
-        scope: form.scope,
-        methodology: form.methodology,
-      })
-      setShowNew(false)
-      setForm({ ...form, name: '', target: '' })
-      await load()
-    } catch (e) {
-      setError(String(e))
-    }
-  }
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+    try { localStorage.setItem('sentinel.theme', theme) } catch { /* ignore */ }
+  }, [theme])
 
-  async function removeAssessment(id: string) {
-    try {
-      await invoke('delete_assessment', { assessmentId: id })
-      if (selected?.id === id) { setSelected(null); setFindings([]) }
-      await load()
-    } catch (e) {
-      setError(String(e))
-    }
-  }
+  const [projectsLoaded, setProjectsLoaded] = useState(false)
 
-  async function sendRepeater() {
-    setSending(true)
+  const refreshAssessments = useCallback(async () => {
     try {
-      setRepeaterResp(await invoke<RepeaterResponse>('repeater_send', { rawRequest: repeaterReq }))
+      const list = await api.listAssessments()
+      setAssessments(list)
+      setProjectsError(null)
+      setSelectedId(id => (id && list.some(a => a.id === id) ? id : list[0]?.id ?? null))
+    } catch (e) { setProjectsError(clean(e)) } finally { setProjectsLoaded(true) }
+  }, [])
+
+  // Until projects are known, findings count as loading so no false "No findings" flashes.
+  // A request token drops late answers from a project the user already switched away from.
+  const refreshFindings = useCallback(async () => {
+    const req = ++findingsReq.current
+    if (!selectedId) { setFindings([]); if (projectsLoaded) setFindingsLoading(false); return }
+    setFindingsLoading(true)
+    try {
+      const list = await api.listFindings(selectedId)
+      if (req !== findingsReq.current) return
+      setFindings(list)
+      setFindingsError(null)
     } catch (e) {
-      setError(String(e))
+      if (req === findingsReq.current) setFindingsError(clean(e))
     } finally {
-      setSending(false)
+      if (req === findingsReq.current) setFindingsLoading(false)
     }
-  }
+  }, [selectedId, projectsLoaded])
 
-  function toRepeater(entry: HistoryEntry) {
-    setRepeaterReq(entry.request_headers || `GET ${entry.path || '/'} HTTP/1.1\r\nHost: ${entry.host}\r\nConnection: close\r\n\r\n`)
-    setRepeaterResp(null)
-    setView('repeater')
-  }
+  const refreshTraffic = useCallback(async () => {
+    try {
+      setTraffic(await api.listTraffic(200))
+      setTrafficError(null)
+    } catch (e) { setTrafficError(clean(e)) }
+  }, [])
 
-  const counts = {
-    total: assessments.length,
-    active: assessments.filter(a => a.status === 'Active').length,
-    draft: assessments.filter(a => a.status === 'Draft').length,
+  // Switching project clears the previous project's findings at once, never shows them under the new name.
+  const selectProject = useCallback((id: string | null) => {
+    setSelectedId(cur => {
+      if (cur !== id) { setFindings([]); setFindingsLoading(true); setFocusFinding(null) }
+      return id
+    })
+  }, [])
+
+  useEffect(() => { refreshAssessments() }, [refreshAssessments])
+  useEffect(() => { refreshFindings() }, [refreshFindings])
+
+  // Proxy status and the live traffic tail run for the whole session, not per view.
+  useEffect(() => {
+    api.proxyStatus().then(setProxy).catch(() => setProxy({ listening: false, port: 8080, tor_enabled: false, tor_addr: '' }))
+    refreshTraffic()
+    return api.onTraffic(entry => {
+      setTraffic(t => [entry, ...t].slice(0, 500))
+      setFreshIds(s => new Set(s).add(entry.id))
+      setTimeout(() => setFreshIds(s => { const n = new Set(s); n.delete(entry.id); return n }), 700)
+    })
+  }, [refreshTraffic])
+
+  const toRepeater = useCallback((raw: string) => {
+    setRepeaterReq(raw.includes('\n\n') || raw.includes('\r\n\r\n') ? raw : raw.replace(/\s*$/, '') + '\r\n\r\n')
+    go('repeater')
+    toast('Request sent to Repeater')
+  }, [go, toast])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPalette(p => !p) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
+  const commands = useMemo<Command[]>(() => [
+    ...[...NAV, ...UTILITY]
+      .map(n => ({ id: `go-${n.id}`, group: 'Go to', label: n.label, run: () => go(n.id) })),
+    { id: 'new', group: 'Project', label: 'New project', run: () => setNewOpen(true) },
+    { id: 'scan', group: 'Action', label: 'Start a scan', run: () => go('scanner') },
+    { id: 'decide', group: 'Action', label: 'Review findings that need a decision', run: () => go('findings') },
+    { id: 'export', group: 'Action', label: 'Export a report', run: () => go('reports') },
+    { id: 'proxy-addr', group: 'Action', label: 'Copy proxy address', run: () => {
+      const addr = `127.0.0.1:${proxy?.port ?? 8080}`
+      if (!navigator.clipboard) { toast('Clipboard is not available here', 'bad'); return }
+      navigator.clipboard.writeText(addr).then(() => toast('Proxy address copied'), () => toast('Copy failed', 'bad'))
+    } },
+    ...assessments.map(a => ({ id: `p-${a.id}`, group: 'Switch project', label: a.name, run: () => selectProject(a.id) })),
+    { id: 'theme', group: 'Appearance', label: theme === 'dark' ? 'Use light theme' : 'Use dark theme', run: () => setTheme(t => (t === 'dark' ? 'light' : 'dark')) },
+  ], [assessments, go, theme, selectProject, proxy, toast])
+
+  // Badges show what needs attention in this project, not global totals.
+  const scopeHost = selected ? hostnameOfTarget(selected.target) : ''
+  const scopedTraffic = scopeHost ? traffic.filter(t => inScope(t.host, scopeHost)).length : traffic.length
+
+  const state: AppState = {
+    assessments, selected, select: selectProject, refreshAssessments, openNewProject: () => setNewOpen(true),
+    projectsLoaded, projectsError,
+    findings, findingsLoading, findingsError, refreshFindings, focusFinding, setFocusFinding,
+    proxy, setProxy, traffic, freshIds, trafficError, refreshTraffic,
+    repeaterReq, setRepeaterReq, toRepeater,
+    view, go, fail,
   }
 
   return (
-    <div className="app">
-      <aside className="sidebar">
-        <div className="logo"><span className="dot" />SENTINEL</div>
-        {NAV.map(n => (
-          <button
-            key={n.id}
-            className={'nav-item' + (view === n.id ? ' active' : '')}
-            onClick={() => setView(n.id)}
-          >
-            <span>{n.icon}</span>{n.label}
-            {n.id === 'findings' && findings.length > 0 && (
-              <span className="count">{findings.length}</span>
+    <AppContext.Provider value={state}>
+      <a className="skip" href="#main">Skip to content</a>
+      <div className="shell">
+        <aside className="sidebar" aria-label="Primary">
+          <div className="brand">
+            <Logo />
+            <span>Sentinel</span>
+          </div>
+          <nav className="nav">
+            {NAV.map(n => <NavItem key={n.id} n={n} view={view} go={go} count={n.id === 'findings' ? findings.filter(needsDecision).length : n.id === 'proxy' ? scopedTraffic : 0} />)}
+          </nav>
+          <div className="sidebar-foot">
+            {UTILITY.map(n => <NavItem key={n.id} n={n} view={view} go={go} count={0} />)}
+            <button type="button" className="proxy-block" onClick={() => go('settings')} aria-label="Proxy status, open settings">
+              <span className={'proxy-line' + (proxy && !proxy.listening ? ' is-down' : '')}>
+                {proxy?.listening ? <CheckCircle size={14} weight="fill" className="live-icon is-live" aria-hidden="true" /> : <XCircle size={14} weight="fill" className="live-icon" aria-hidden="true" />}
+                {proxy?.listening ? 'Proxy listening' : 'Proxy stopped'}
+              </span>
+              <span className="mono proxy-addr">127.0.0.1:{proxy?.port ?? 8080}</span>
+              <span className="mono proxy-up">{proxy?.tor_enabled ? `via socks5h ${proxy.tor_addr}` : 'upstream direct'}</span>
+            </button>
+          </div>
+        </aside>
+
+        <div className="main">
+          <header className="topbar">
+            {assessments.length > 0 ? (
+              <label className="project-switch">
+                <span className="sr-only">Project</span>
+                <select value={selectedId ?? ''} onChange={e => selectProject(e.target.value || null)}>
+                  {assessments.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                </select>
+              </label>
+            ) : projectsLoaded && !projectsError && (
+              <button type="button" className="btn btn-ghost btn-sm" onClick={() => setNewOpen(true)}>New project</button>
             )}
-          </button>
-        ))}
-        <div className="proxy-status">
-          <div className="live"><span className="dot2" />Proxy listening</div>
-          <div className="addr">127.0.0.1:8080</div>
+            {selected && (
+              <span className="scope-chip mono" title="In scope. Every engine checks this before sending.">
+                <Target size={14} aria-hidden="true" />
+                <span className="truncate">{hostOf(selected.target)}</span>
+              </span>
+            )}
+            <button type="button" className="cmd-trigger" onClick={() => setPalette(true)}>
+              <MagnifyingGlass size={14} aria-hidden="true" />
+              <span>Go to or run</span>
+              <Kbd>Ctrl K</Kbd>
+            </button>
+            <div className="topbar-end">
+              {!api.isTauri && <span className="demo-note" title="Running outside the desktop shell. Data is a fixed sample.">Demo data</span>}
+              <button
+                type="button"
+                className="btn-icon"
+                aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}
+                onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+              >
+                {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              </button>
+            </div>
+          </header>
+
+          <main id="main" className={`content content-${view}`} tabIndex={-1}>
+            <div className="view" key={view}>
+            {projectsError && assessments.length === 0 && view !== 'decoder' && view !== 'settings' ? (
+              <ErrorState title="Projects could not be loaded" detail={projectsError} onRetry={refreshAssessments} />
+            ) : <>
+            {view === 'overview' && <Overview />}
+            {view === 'proxy' && <Proxy />}
+            {view === 'repeater' && <Repeater />}
+            {view === 'scanner' && <Scanner />}
+            {view === 'decoder' && <Decoder />}
+            {view === 'findings' && <Findings />}
+            {view === 'reports' && <Reports />}
+            {view === 'settings' && <Settings theme={theme} setTheme={setTheme} />}
+            </>}
+            </div>
+          </main>
         </div>
-      </aside>
-
-      <div className="main">
-        <header className="topbar">
-          <select
-            value={selected?.id ?? ''}
-            onChange={e => {
-              const a = assessments.find(x => x.id === e.target.value) ?? null
-              setSelected(a)
-              if (a) loadFindings(a)
-            }}
-          >
-            <option value="">No assessment selected</option>
-            {assessments.map(a => (
-              <option key={a.id} value={a.id}>{a.name}</option>
-            ))}
-          </select>
-              <button className="cmd-btn">⌕ Search or run command <kbd>Ctrl K</kbd></button>
-              {selected && <span style={{ fontSize: 11, color: 'var(--dim)' }}>◆ {selected.name}</span>}
-        </header>
-
-        <main className="content">
-          {error && <div className="empty" style={{ borderColor: 'var(--sev-crit)', color: 'var(--sev-crit)' }}>{error}</div>}
-
-          {view === 'home' && (
-            <>
-              <div className="stats">
-                <div className="stat">
-                  <div className="label">Assessments</div>
-                  <div className="value">{counts.total}</div>
-                  <div className="sub">{counts.active} active · {counts.draft} draft</div>
-                </div>
-                <div className="stat">
-                  <div className="label">Proxy</div>
-                  <div className="value" style={{ color: 'var(--ok)' }}>Up</div>
-                  <div className="sub">127.0.0.1:8080</div>
-                </div>
-                <div className="stat">
-                  <div className="label">Findings</div>
-                  <div className="value">{findings.length}</div>
-                  <div className="sub">{selected ? selected.name : 'no assessment'}</div>
-                </div>
-                <div className="stat">
-                  <div className="label">Engine</div>
-                  <div className="value">Rust</div>
-                  <div className="sub">tokio · sqlite</div>
-                </div>
-              </div>
-
-              <div className="section-title">Assessments</div>
-              {assessments.length === 0 ? (
-                <div className="empty">
-                  <h3>No assessments yet</h3>
-                  <p>Create your first assessment to start the workflow.</p>
-                  <div style={{ marginTop: 14 }}>
-                    <button className="new-assess" onClick={() => setShowNew(true)}>+ New Assessment</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ marginBottom: 10 }}>
-                    <button className="new-assess" onClick={() => setShowNew(true)}>+ New Assessment</button>
-                  </div>
-                  <div className="assessments">
-                    {assessments.map(a => (
-                      <div key={a.id} className="assess-card" onClick={() => { setSelected(a); loadFindings(a) }}>
-                        <div>
-                          <div className="nm">{a.name}</div>
-                          <div className="tg">{a.target}</div>
-                        </div>
-                        <div className="meta">
-                          <span>{a.environment} · {a.scope}</span>
-                          <span className={'badge ' + a.status.toLowerCase()}>{a.status}</span>
-                          <button className="btn-ghost" onClick={e => { e.stopPropagation(); removeAssessment(a.id) }}>✕</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          {view === 'findings' && (
-            selected ? (
-              <div className="assessments">
-                {findings.length === 0
-                  ? <div className="empty"><h3>No findings</h3><p>Run the scanner to populate findings for this assessment.</p></div>
-                  : findings.map(f => (
-                    <div key={f.id} className={'assess-card finding ' + f.severity.toLowerCase()}>
-                      <div>
-                        <div className="nm">
-                          <span className={SEV_CLASS[f.severity]}>[{f.severity.toUpperCase()}]</span> {f.title}
-                        </div>
-                        <div className="tg">{f.description}</div>
-                      </div>
-                      <div className="meta">
-                        <span>{f.confidence} · {f.status}</span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            ) : <div className="empty"><h3>Select an assessment</h3><p>Pick one from the top bar to view its findings.</p></div>
-          )}
-
-          {view === 'repeater' && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, height: '100%' }}>
-              <div className="pane" style={{ minHeight: 0 }}>
-                <div className="hd">
-                  <span className="tab on">Request</span>
-                  <button
-                    className="new-assess"
-                    style={{ marginLeft: 'auto', padding: '4px 12px' }}
-                    onClick={sendRepeater}
-                    disabled={sending}
-                  >
-                    {sending ? 'Sending…' : '▶ Send'}
-                  </button>
-                </div>
-                <textarea
-                  value={repeaterReq}
-                  onChange={e => setRepeaterReq(e.target.value)}
-                  spellCheck={false}
-                  style={{
-                    flex: 1, background: 'var(--bg)', border: 'none', outline: 'none',
-                    color: 'var(--dim)', fontFamily: 'var(--mono)', fontSize: 12,
-                    padding: 12, resize: 'none', minHeight: 300,
-                  }}
-                />
-              </div>
-              <div className="pane" style={{ minHeight: 0 }}>
-                <div className="hd">
-                  <span className="tab on">Response</span>
-                  {repeaterResp && (
-                    <span className="ml-auto font-mono" style={{ marginLeft: 'auto', fontFamily: 'var(--mono)', fontSize: 10, color: 'var(--mute)' }}>
-                      {repeaterResp.protocol} · {repeaterResp.duration_ms}ms
-                    </span>
-                  )}
-                </div>
-                {repeaterResp ? (
-                  <>
-                    <div style={{ padding: '8px 12px', fontFamily: 'var(--mono)', fontSize: 12 }}>
-                      <span className={repeaterResp.status_code >= 400 ? 'bad' : 'ok'}>
-                        {repeaterResp.status_code} {repeaterResp.status_text}
-                      </span>
-                      <span style={{ color: 'var(--mute)' }}> — {repeaterResp.url}</span>
-                    </div>
-                    <pre className="body" style={{ borderTop: '1px solid var(--line)' }}>{repeaterResp.headers_text || '(no headers)'}</pre>
-                    <pre className="body" style={{ borderTop: '1px solid var(--line)' }}>{repeaterResp.body || '(empty body)'}</pre>
-                  </>
-                ) : (
-                  <pre className="body" style={{ color: 'var(--mute)' }}>No response yet. Edit the request and hit Send.</pre>
-                )}
-              </div>
-            </div>
-          )}
-
-          {view === 'traffic' && (
-            <>
-              <div className="stats" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: 12 }}>
-                <div className="stat">
-                  <div className="label">Captured</div>
-                  <div className="value">{traffic.length}</div>
-                  <div className="sub">live from proxy</div>
-                </div>
-                <div className="stat">
-                  <div className="label">Errors</div>
-                  <div className="value" style={{ color: 'var(--sev-crit)' }}>
-                    {traffic.filter(t => t.status_code >= 500).length}
-                  </div>
-                  <div className="sub">5xx responses</div>
-                </div>
-                <div className="stat">
-                  <div className="label">TLS</div>
-                  <div className="value">{traffic.filter(t => t.tls_enabled).length}</div>
-                  <div className="sub">HTTPS transactions</div>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: 12 }}>
-                <div className="tbl">
-                  <table>
-                    <thead>
-                      <tr><th>Method</th><th>Host</th><th>Path</th><th>Status</th><th>Size</th><th>Time</th></tr>
-                    </thead>
-                    <tbody>
-                      {traffic.length === 0 ? (
-                        <tr><td colSpan={6} style={{ textAlign: 'center', padding: 30, color: 'var(--mute)' }}>
-                          No traffic yet — set your browser proxy to 127.0.0.1:{proxyStatus?.port ?? 8080}
-                          {proxyStatus?.tor_enabled ? ' (routed via Tor)' : ''} and browse.
-                        </td></tr>
-                      ) : traffic.map(t => (
-                        <tr key={t.id} className={selectedEntry?.id === t.id ? 'sel' : ''} onClick={() => setSelectedEntry(t)}>
-                          <td><span className={'m ' + (t.method === 'GET' ? 'm1' : 'm2')}>{t.method}</span></td>
-                          <td style={{ maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.host}</td>
-                          <td style={{ maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.path}{t.query && `?${t.query}`}</td>
-                          <td className={t.status_code >= 500 ? 'bad' : t.status_code >= 400 ? 'warn' : 'ok'}>{t.status_code}</td>
-                          <td>{t.response_size > 1024 ? `${(t.response_size / 1024).toFixed(1)}k` : t.response_size}</td>
-                          <td>{t.duration_ms}ms</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  <div className="tfoot">
-                    <span>● live tail</span><span>{traffic.length} shown</span>
-                    {proxyStatus?.tor_enabled && <span style={{ color: 'var(--acc)' }}>via Tor {proxyStatus.tor_addr}</span>}
-                  </div>
-                </div>
-
-                <div className="pane">
-                  <div className="hd">
-                    <span className="tab on">Request</span>
-                    <span className="tab">Response</span>
-                    <button
-                      className="btn-ghost"
-                      style={{ marginLeft: 'auto', padding: '3px 10px' }}
-                      onClick={() => selectedEntry && toRepeater(selectedEntry)}
-                    >
-                      ↻ Send to Repeater
-                    </button>
-                  </div>
-                  {selectedEntry ? (
-                    <pre className="body">{selectedEntry.request_headers || '(empty)'}</pre>
-                  ) : (
-                    <pre className="body" style={{ color: 'var(--mute)' }}>Select a transaction to inspect it.</pre>
-                  )}
-                  {selectedEntry && (
-                    <pre className="body" style={{ borderTop: '1px solid var(--line)' }}>
-                      {selectedEntry.response_headers || '(no response)'}
-                    </pre>
-                  )}
-                  <div className="fbar">
-                    <span>{selectedEntry?.protocol ?? ''}</span>
-                    <span>{selectedEntry ? `${selectedEntry.request_size}B → ${selectedEntry.response_size}B` : ''}</span>
-                    <span style={{ marginLeft: 'auto' }}>{selectedEntry?.tls_enabled ? 'TLS intercepted' : 'plain'}</span>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-          {view === 'scanner' && <div className="placeholder">Scanner view — wired to the scan pipeline (next milestone)</div>}
-          {view === 'reports' && <div className="placeholder">Reports view — wired to the reporting module (next milestone)</div>}
-          {view === 'settings' && (
-            <div style={{ maxWidth: 480 }}>
-              <div className="section-title" style={{ marginTop: 0 }}>Anonymity</div>
-              <div className="stat" style={{ marginBottom: 12 }}>
-                <div className="label" style={{ marginBottom: 10 }}>Route all outbound traffic through Tor (SOCKS5)</div>
-                <div className="field">
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={torForm.tor_enabled}
-                      onChange={e => setTorForm({ ...torForm, tor_enabled: e.target.checked })}
-                      style={{ width: 'auto', marginRight: 8 }}
-                    />
-                    Enabled — requests leave through a SOCKS5 proxy (Tor or compatible)
-                  </label>
-                </div>
-                <div className="field">
-                  <label>SOCKS5 address (Tor default: 127.0.0.1:9050 — run the Tor service yourself)</label>
-                  <input
-                    value={torForm.tor_addr}
-                    onChange={e => setTorForm({ ...torForm, tor_addr: e.target.value })}
-                    placeholder="127.0.0.1:9050"
-                    style={{ fontFamily: 'var(--mono)' }}
-                  />
-                </div>
-                <button
-                  className="new-assess"
-                  disabled={!torForm.tor_addr}
-                  style={{ opacity: torForm.tor_addr ? 1 : 0.5 }}
-                  onClick={async () => {
-                    try {
-                      const s = await invoke<ProxyStatus>('set_proxy_mode', {
-                        torEnabled: torForm.tor_enabled,
-                        torAddr: torForm.tor_addr,
-                      })
-                      setProxyStatus(s)
-                    } catch (e) { setError(String(e)) }
-                  }}
-                >
-                  Apply & restart proxy
-                </button>
-                {proxyStatus && (
-                  <div style={{ marginTop: 12, fontSize: 11, color: 'var(--dim)', fontFamily: 'var(--mono)' }}>
-                    proxy: 127.0.0.1:{proxyStatus.port} · upstream: {proxyStatus.tor_enabled ? `socks5://${proxyStatus.tor_addr}` : 'direct'}
-                  </div>
-                )}
-              </div>
-              <div className="empty">
-                <p>Tool HTTP clients (repeater, scanner, crawler) honor the same Tor setting via <code>socks5h</code> — DNS resolves through Tor too.</p>
-              </div>
-            </div>
-          )}
-        </main>
       </div>
 
-      {showNew && (
-        <div className="modal-overlay" onClick={() => setShowNew(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <h3>New Assessment</h3>
-            <div className="field">
-              <label>Name</label>
-              <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Acme Corp — Web Pentest" />
-            </div>
-            <div className="field">
-              <label>Target</label>
-              <input value={form.target} onChange={e => setForm({ ...form, target: e.target.value })} placeholder="https://acme.com" />
-            </div>
-            <div className="field">
-              <label>Environment</label>
-              <select value={form.environment} onChange={e => setForm({ ...form, environment: e.target.value })}>
-                {['Production', 'Staging', 'Development'].map(x => <option key={x}>{x}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Scope</label>
-              <select value={form.scope} onChange={e => setForm({ ...form, scope: e.target.value })}>
-                {['Web Application', 'API', 'Mobile Backend', 'Network'].map(x => <option key={x}>{x}</option>)}
-              </select>
-            </div>
-            <div className="field">
-              <label>Methodology</label>
-              <select value={form.methodology} onChange={e => setForm({ ...form, methodology: e.target.value })}>
-                {['OWASP', 'PTES', 'OSSTMM', 'Custom'].map(x => <option key={x}>{x}</option>)}
-              </select>
-            </div>
-            <div className="modal-actions">
-              <button className="btn-ghost" onClick={() => setShowNew(false)}>Cancel</button>
-              <button className="new-assess" onClick={createAssessment} disabled={!form.name || !form.target}
-                style={{ opacity: !form.name || !form.target ? 0.5 : 1 }}>Create</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <CommandPalette open={palette} onClose={() => setPalette(false)} commands={commands} />
+      <NewProject open={newOpen} onClose={() => setNewOpen(false)} onCreated={async a => {
+        await refreshAssessments()
+        selectProject(a.id)
+        go('overview')
+        toast(`Project "${a.name}" created`)
+      }} />
+    </AppContext.Provider>
   )
 }
 
-export default App
+function NewProject({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (a: Assessment) => void }) {
+  const [form, setForm] = useState({ name: '', target: '', environment: 'Staging', scope: 'Web Application', methodology: 'OWASP' })
+  const [busy, setBusy] = useState(false)
+  const [touched, setTouched] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  // Accepts hosts, IPs and localhost with ports, as long as it is a full http(s) URL.
+  const targetOk = (() => {
+    try { const u = new URL(form.target.trim()); return /^https?:$/.test(u.protocol) && u.hostname !== '' } catch { return false }
+  })()
+  const nameOk = form.name.trim() !== '' && form.name.trim().length <= 120
+  const ok = nameOk && targetOk
+
+  const submit = async () => {
+    setTouched(true)
+    setSubmitError('')
+    if (!ok) return
+    setBusy(true)
+    try {
+      const a = await api.createAssessment({ ...form, name: form.name.trim(), target: form.target.trim() })
+      onClose()
+      setForm(f => ({ ...f, name: '', target: '' }))
+      setTouched(false)
+      onCreated(a)
+    } catch (e) { setSubmitError(clean(e)) } finally { setBusy(false) }
+  }
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="New project"
+      footer={<>
+        <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
+        <button type="button" className="btn btn-primary" onClick={submit} disabled={busy}>{busy ? 'Creating' : 'Create project'}</button>
+      </>}
+    >
+      <form onSubmit={e => { e.preventDefault(); submit() }} className="form">
+        <div className="field">
+          <label htmlFor="np-name">Name</label>
+          <input id="np-name" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} autoComplete="off"
+            maxLength={120} aria-invalid={touched && !nameOk} aria-describedby={touched && !nameOk ? 'np-name-err' : undefined} />
+          {touched && !nameOk && <p id="np-name-err" className="help help-bad">Give the project a name.</p>}
+        </div>
+        <div className="field">
+          <label htmlFor="np-target">Target</label>
+          <input
+            id="np-target"
+            className="mono"
+            value={form.target}
+            onChange={e => setForm({ ...form, target: e.target.value })}
+            aria-invalid={touched && !targetOk}
+            aria-describedby="np-target-help"
+            autoComplete="off"
+            spellCheck={false}
+          />
+          <p id="np-target-help" className={'help' + (touched && !targetOk ? ' help-bad' : '')}>
+            {touched && !targetOk
+              ? 'Enter a full URL with http:// or https://, for example https://portal.example.test or http://localhost:3000'
+              : 'This host becomes the first include rule. Nothing outside scope is ever sent.'}
+          </p>
+        </div>
+        <div className="field-row">
+          <div className="field">
+            <label htmlFor="np-env">Environment</label>
+            <select id="np-env" value={form.environment} onChange={e => setForm({ ...form, environment: e.target.value })}>
+              {['Production', 'Staging', 'Development'].map(x => <option key={x}>{x}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="np-scope">Type</label>
+            <select id="np-scope" value={form.scope} onChange={e => setForm({ ...form, scope: e.target.value })}>
+              {['Web Application', 'API', 'Mobile Backend', 'Network'].map(x => <option key={x}>{x}</option>)}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="np-method">Methodology</label>
+            <select id="np-method" value={form.methodology} onChange={e => setForm({ ...form, methodology: e.target.value })}>
+              {['OWASP', 'PTES', 'OSSTMM', 'Custom'].map(x => <option key={x}>{x}</option>)}
+            </select>
+          </div>
+        </div>
+        {submitError && <p className="inline-error inline-error-flush" role="alert"><strong>Project not created.</strong> {submitError}</p>}
+        <button type="submit" hidden />
+      </form>
+    </Modal>
+  )
+}
+
+function NavItem({ n, view, go, count }: { n: { id: View; label: string; icon: Icon }; view: View; go: (v: View) => void; count: number }) {
+  return (
+    <a
+      href={`#/${n.id}`}
+      className="nav-item"
+      aria-current={view === n.id ? 'page' : undefined}
+      onClick={e => { e.preventDefault(); go(n.id) }}
+    >
+      <n.icon size={16} aria-hidden="true" />
+      <span>{n.label}</span>
+      {count > 0 && <span className="nav-count">{count}</span>}
+    </a>
+  )
+}

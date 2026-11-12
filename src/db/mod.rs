@@ -163,6 +163,8 @@ pub fn initialize(path: &Path) -> anyhow::Result<Connection> {
         "ALTER TABLE history_entries ADD COLUMN negotiated_alpn TEXT",
         "ALTER TABLE history_entries ADD COLUMN protocol_version TEXT DEFAULT 'HTTP/1.1'",
         "ALTER TABLE tasks ADD COLUMN reference TEXT NOT NULL DEFAULT ''",
+        // Verification record per finding (JSON of scanner::sdk::record::VerificationRecord).
+        "CREATE TABLE IF NOT EXISTS finding_records (finding_id TEXT PRIMARY KEY, record_json TEXT NOT NULL, FOREIGN KEY (finding_id) REFERENCES findings(id))",
     ] {
         let _ = conn.execute_batch(col_stmt);
     }

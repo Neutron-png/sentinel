@@ -12,7 +12,7 @@ use sentinel::history::models::HistoryEntry;
 use sentinel::models::assessment::{
     Assessment, AssessmentStatus, Environment, Methodology, Scope,
 };
-use sentinel::models::finding::Finding;
+use sentinel::models::finding::{Finding, FindingStatus};
 use sentinel::proxy::config::ProxyConfig;
 use sentinel::proxy::events::{EventBus, ProxyEvent};
 use sentinel::proxy::server::ProxyServer;
@@ -43,6 +43,8 @@ struct ProxyState {
     event_bus: Mutex<EventBus>,
     shutdown: Mutex<Option<watch::Sender<bool>>>,
     settings: Mutex<ProxySettings>,
+    /// True only after the listener actually bound. The UI shows this, so it must not be assumed.
+    listening: Mutex<bool>,
     db: DbRef,
 }
 
@@ -146,10 +148,53 @@ fn create_assessment(
     Ok(assessment)
 }
 
+/// A finding plus its verification record (see `scanner::sdk::record`), when one was captured.
+#[derive(serde::Serialize)]
+struct FindingView {
+    #[serde(flatten)]
+    finding: Finding,
+    record: Option<serde_json::Value>,
+}
+
 #[tauri::command]
-fn list_findings(db: State<Db>, assessment_id: String) -> Result<Vec<Finding>, String> {
+fn list_findings(db: State<Db>, assessment_id: String) -> Result<Vec<FindingView>, String> {
     let id = Uuid::parse_str(&assessment_id).map_err(|e| e.to_string())?;
-    db.0.lock().unwrap().list_findings_by_assessment(&id).map_err(|e| e.to_string())
+    let repo = db.0.lock().unwrap();
+    let findings = repo.list_findings_by_assessment(&id).map_err(|e| e.to_string())?;
+    let mut records = repo.load_finding_records(&id).map_err(|e| e.to_string())?;
+    Ok(findings
+        .into_iter()
+        .map(|f| {
+            // A corrupt record is dropped rather than failing the whole list.
+            let record = records.remove(&f.id).and_then(|j| serde_json::from_str(&j).ok());
+            FindingView { finding: f, record }
+        })
+        .collect())
+}
+
+/// Record the tester's decision on a finding: Verified, Draft (reopen), False Positive or Accepted Risk.
+#[tauri::command]
+fn update_finding_status(
+    db: State<Db>,
+    assessment_id: String,
+    finding_id: String,
+    status: String,
+) -> Result<Finding, String> {
+    let aid = Uuid::parse_str(&assessment_id).map_err(|e| e.to_string())?;
+    let fid = Uuid::parse_str(&finding_id).map_err(|e| e.to_string())?;
+    let status =
+        FindingStatus::from_label_for_db(&status).ok_or_else(|| format!("unknown finding status: {status}"))?;
+    let repo = db.0.lock().unwrap();
+    let mut finding = repo
+        .list_findings_by_assessment(&aid)
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .find(|f| f.id == fid)
+        .ok_or_else(|| "finding not found in this project".to_string())?;
+    finding.status = status;
+    finding.updated_at = Utc::now();
+    repo.update_finding(&finding).map_err(|e| e.to_string())?;
+    Ok(finding)
 }
 
 #[tauri::command]
@@ -305,14 +350,17 @@ fn set_proxy_mode(
     }
     let snapshot = s.clone();
     drop(s);
-    start_proxy(&proxy, &snapshot)?;
+    let started = start_proxy(&proxy, &snapshot);
+    *proxy.listening.lock().unwrap() = started.is_ok();
+    started?;
     proxy_status_inner(&proxy)
 }
 
 fn proxy_status_inner(proxy: &ProxyState) -> Result<serde_json::Value, String> {
     let s = proxy.settings.lock().unwrap();
+    let listening = *proxy.listening.lock().unwrap();
     Ok(serde_json::json!({
-        "listening": true,
+        "listening": listening,
         "port": s.port,
         "tor_enabled": s.tor_enabled,
         "tor_addr": s.tor_addr,
@@ -384,17 +432,20 @@ fn main() {
 
     tauri::Builder::default()
         .manage(Db(repo.clone()))
+        .manage(scan::ScanControl::default())
         .setup(move |app| {
             let state = ProxyState {
                 event_bus: Mutex::new(EventBus::new(1024)),
                 shutdown: Mutex::new(None),
                 settings: Mutex::new(ProxySettings::default()),
+                listening: Mutex::new(false),
                 db: repo.clone(),
             };
 
             let settings = state.settings.lock().unwrap().clone();
-            if let Err(e) = start_proxy(&state, &settings) {
-                eprintln!("[proxy] FAILED: {e}");
+            match start_proxy(&state, &settings) {
+                Ok(()) => *state.listening.lock().unwrap() = true,
+                Err(e) => eprintln!("[proxy] FAILED: {e}"),
             }
             eprintln!("[app] setup continuing");
 
@@ -439,11 +490,13 @@ fn main() {
             create_assessment,
             list_findings,
             delete_assessment,
+            update_finding_status,
             list_traffic,
             proxy_status,
             set_proxy_mode,
             repeater_send,
-            scan::start_scan
+            scan::start_scan,
+            scan::cancel_scan
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

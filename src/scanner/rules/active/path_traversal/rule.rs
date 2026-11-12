@@ -61,14 +61,23 @@ impl ScanRule for PathTraversalRule {
         requests
     }
 
-    fn execute(&self, _context: &ScanRuleContext, request: &HttpRequest, response: &HttpResponse) -> Vec<RuleResult> {
+    fn execute(&self, context: &ScanRuleContext, request: &HttpRequest, response: &HttpResponse) -> Vec<RuleResult> {
         let mut results = Vec::new();
         let payloads = self.payload_engine.generate("Path Traversal");
         for technique in &self.techniques {
             for payload in &payloads {
                 if let Some(finding) = technique.analyze(&self.analyzer, request, response, &payload.value) {
                     let mut result = RuleResult::new(&self.metadata.id, &format!("Path Traversal - {}", finding.technique), RuleSeverity::High);
-                    result = result.with_status(RuleStatus::Potential).with_confidence(finding.confidence).with_description(&format!("{} in {}", finding.technique, finding.injection_point)).with_evidence(&finding.evidence);
+                    result = result.with_status(RuleStatus::Potential).with_confidence(finding.confidence).with_description(&format!("{} in {}", finding.technique, finding.injection_point)).with_evidence(&finding.evidence)
+                        .with_record(crate::scanner::sdk::record::VerificationRecord::capture(
+                            &finding.technique,
+                            &finding.injection_point,
+                            &finding.payload,
+                            request,
+                            context.baseline.as_ref(),
+                            response,
+                            &finding.evidence,
+                        ));
                     results.push(result);
                 }
             }
