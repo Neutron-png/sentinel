@@ -60,7 +60,7 @@ impl ScanRule for SqliRule {
     fn execute(
         &self,
         context: &ScanRuleContext,
-        _request: &HttpRequest,
+        request: &HttpRequest,
         response: &HttpResponse,
     ) -> Vec<RuleResult> {
         let mut results = Vec::new();
@@ -84,7 +84,16 @@ impl ScanRule for SqliRule {
                             .with_status(RuleStatus::Potential)
                             .with_confidence(finding.confidence)
                             .with_description(&format!("{} in parameter '{}'", finding.technique, finding.parameter))
-                            .with_evidence(&finding.evidence);
+                            .with_evidence(&finding.evidence)
+                            .with_record(crate::scanner::sdk::record::VerificationRecord::capture(
+                                &finding.technique,
+                                &finding.parameter,
+                                &finding.payload,
+                                request,
+                                Some(baseline),
+                                response,
+                                &finding.evidence,
+                            ));
                         results.push(result);
                     }
                 }

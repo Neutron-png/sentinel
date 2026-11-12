@@ -1,0 +1,1062 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sentinel, findings you can defend</title>
+<meta name="description" content="Sentinel tests your apps and reports only the security issues it can prove, with the evidence your team needs to fix them.">
+<meta name="color-scheme" content="dark light">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<script>
+  document.documentElement.classList.add('js');
+  try { var t = localStorage.getItem('sentinel-theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=clash-display@500,600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<style>
+/* =====================================================================
+   Tokens. Dark first, violet-ink neutrals (hue 290), brand violet accent
+   taken from assets/logo.svg. Light theme is first class.
+   Shape rule: interactive controls and nav are pills (9999px), framed
+   surfaces are 12px, chips and code wells are 6px.
+   ===================================================================== */
+:root {
+  --bg-0: oklch(0.14 0.02 290);
+  --bg-1: oklch(0.17 0.02 290);
+  --bg-2: oklch(0.20 0.02 290);
+  --bg-3: oklch(0.235 0.02 290);
+  --line-1: oklch(0.27 0.018 290);
+  --line-2: oklch(0.36 0.02 290);
+  --fg-1: oklch(0.96 0.006 290);
+  --fg-2: oklch(0.80 0.012 290);
+  --fg-3: oklch(0.67 0.016 290);
+  --acc: oklch(0.68 0.2 293);
+  --on-acc: oklch(0.14 0.02 290);
+  --acc-soft: oklch(0.68 0.2 293 / 0.16);
+  --sev-critical: oklch(0.68 0.19 25);
+  --ok: oklch(0.79 0.12 160);
+  --bad: oklch(0.70 0.17 25);
+  --shadow-float: 0 1px 2px oklch(0.08 0.02 290 / .35), 0 24px 48px -16px oklch(0.08 0.02 290 / .6);
+  --grain-opacity: .035;
+  --lattice-alpha: .15;
+
+  --display: "Clash Display", "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  --r-chip: 6px;
+  --r-frame: 12px;
+  --r-pill: 9999px;
+
+  --ease-reveal: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-ui: cubic-bezier(0.32, 0.72, 0, 1);
+  --d-press: 140ms;
+  --d-ui: 260ms;
+  --d-reveal: 900ms;
+
+  --container: 1280px;
+  --gutter: 40px;
+  --section: 160px;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg-0: oklch(0.975 0.006 290);
+    --bg-1: oklch(0.99 0.004 290);
+    --bg-2: oklch(0.955 0.008 290);
+    --bg-3: oklch(0.93 0.01 290);
+    --line-1: oklch(0.90 0.01 290);
+    --line-2: oklch(0.82 0.014 290);
+    --fg-1: oklch(0.20 0.025 290);
+    --fg-2: oklch(0.40 0.02 290);
+    --fg-3: oklch(0.51 0.02 290);
+    --acc: oklch(0.5 0.22 292);
+    --on-acc: oklch(0.99 0.004 290);
+    --acc-soft: oklch(0.5 0.22 292 / 0.12);
+    --sev-critical: oklch(0.55 0.20 27);
+    --ok: oklch(0.50 0.12 160);
+    --bad: oklch(0.55 0.20 27);
+    --shadow-float: 0 1px 2px oklch(0.2 0.03 290 / .08), 0 24px 48px -20px oklch(0.2 0.03 290 / .22);
+    --grain-opacity: .03;
+    --lattice-alpha: .1;
+  }
+}
+:root[data-theme="light"] {
+  --bg-0: oklch(0.975 0.006 290);
+  --bg-1: oklch(0.99 0.004 290);
+  --bg-2: oklch(0.955 0.008 290);
+  --bg-3: oklch(0.93 0.01 290);
+  --line-1: oklch(0.90 0.01 290);
+  --line-2: oklch(0.82 0.014 290);
+  --fg-1: oklch(0.20 0.025 290);
+  --fg-2: oklch(0.40 0.02 290);
+  --fg-3: oklch(0.51 0.02 290);
+  --acc: oklch(0.5 0.22 292);
+  --on-acc: oklch(0.99 0.004 290);
+  --acc-soft: oklch(0.5 0.22 292 / 0.12);
+  --sev-critical: oklch(0.55 0.20 27);
+  --ok: oklch(0.50 0.12 160);
+  --bad: oklch(0.55 0.20 27);
+  --shadow-float: 0 1px 2px oklch(0.2 0.03 290 / .08), 0 24px 48px -20px oklch(0.2 0.03 290 / .22);
+  --grain-opacity: .03;
+  --lattice-alpha: .1;
+}
+
+/* ===== Base ===== */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-padding-top: 96px; }
+body {
+  margin: 0; background: var(--bg-0); color: var(--fg-1);
+  font-family: var(--sans); font-size: 17px; line-height: 28px;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  overflow-x: clip;
+}
+/* Film grain: fixed, non-interactive, static */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 90; pointer-events: none; opacity: var(--grain-opacity);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+  background-size: 220px 220px;
+  mix-blend-mode: overlay;
+}
+img, svg { display: block; max-width: 100%; }
+img { height: auto; }
+a { color: inherit; }
+p { margin: 0; }
+h1, h2, h3, h4 { margin: 0; font-weight: 500; }
+ol, ul { margin: 0; padding: 0; list-style: none; }
+code, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums slashed-zero; }
+::selection { background: var(--acc); color: var(--on-acc); }
+:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; border-radius: 4px; }
+
+.container { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 var(--gutter); }
+.skip { position: absolute; left: 16px; top: -60px; z-index: 100; background: var(--acc); color: var(--on-acc); padding: 10px 16px; border-radius: var(--r-pill); text-decoration: none; font-size: 15px; }
+.skip:focus { top: 16px; }
+
+.display { font-family: var(--display); font-weight: 500; letter-spacing: -0.03em; }
+.h2 { font-family: var(--display); font-weight: 500; font-size: clamp(2rem, 3.8vw, 3.75rem); line-height: 1.04; letter-spacing: -0.025em; max-width: 22ch; text-wrap: balance; }
+.lead { font-size: 19px; line-height: 30px; color: var(--fg-2); max-width: 52ch; margin-top: 28px; }
+.section { padding: var(--section) 0; position: relative; }
+
+/* Reveal: major blocks only */
+.js .reveal { opacity: 0; transform: translateY(32px); transition: opacity var(--d-reveal) var(--ease-reveal), transform var(--d-reveal) var(--ease-reveal); }
+.js .reveal.is-in { opacity: 1; transform: none; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ===== Buttons ===== */
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; height: 56px; padding: 0 28px;
+  border-radius: var(--r-pill); font: 500 16px/1 var(--sans); text-decoration: none; white-space: nowrap;
+  border: 1px solid transparent; cursor: pointer;
+}
+.btn i { font-size: 19px; }
+.btn-acc { background: var(--acc); color: var(--on-acc); }
+.btn-sm { height: 40px; padding: 0 18px; font-size: 14px; }
+@media (hover: hover) and (pointer: fine) { .btn-acc:hover { background: color-mix(in oklch, var(--acc) 88%, var(--fg-1)); } }
+.tlink { display: inline-flex; align-items: center; gap: 8px; color: var(--fg-1); text-decoration: none; font-size: 16px; padding: 6px 0; border-bottom: 1px solid var(--line-2); }
+@media (hover: hover) and (pointer: fine) { .tlink:hover { border-color: var(--fg-1); }  }
+
+/* ===== Floating pill nav ===== */
+.nav {
+  position: fixed; top: 16px; left: 50%; z-index: 60; translate: -50% 0;
+  width: min(1120px, calc(100% - 32px)); height: 60px; border-radius: var(--r-pill);
+  background: color-mix(in oklch, var(--bg-1) 94%, transparent); border: 1px solid var(--line-1);
+  display: flex; align-items: center; gap: 28px; padding: 0 10px 0 22px;
+  box-shadow: var(--shadow-float);
+}
+.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font: 600 20px/1 var(--display); letter-spacing: -0.02em; }
+.brand svg { color: var(--acc); width: 22px; height: 24px; flex: none; }
+.nav-links { display: flex; gap: 26px; margin-left: 10px; }
+.nav-links a { text-decoration: none; color: var(--fg-2); font-size: 14px; transition: color var(--d-ui) var(--ease-ui); }
+@media (hover: hover) and (pointer: fine) { .nav-links a:hover { color: var(--fg-1); } }
+.nav-end { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+.icon-btn { width: 40px; height: 40px; display: inline-grid; place-items: center; border-radius: var(--r-pill); background: transparent; border: 0; color: var(--fg-2); cursor: pointer; }
+.icon-btn i { font-size: 19px; }
+@media (hover: hover) and (pointer: fine) { .icon-btn:hover { background: var(--bg-3); color: var(--fg-1); } }
+
+/* ===== Lattice canvas ===== */
+.lattice { position: absolute; inset: 0; width: 100%; height: 100%; color: var(--acc); pointer-events: none; }
+.hero .lattice { -webkit-mask-image: radial-gradient(70% 95% at 80% 48%, #000 0%, #000 34%, transparent 82%); mask-image: radial-gradient(70% 95% at 80% 48%, #000 0%, #000 34%, transparent 82%); }
+.closing .lattice { -webkit-mask-image: radial-gradient(90% 100% at 85% 60%, #000 0%, transparent 70%); mask-image: radial-gradient(90% 100% at 85% 60%, #000 0%, transparent 70%); opacity: .7; }
+
+/* ===== Hero ===== */
+.hero { position: relative; min-height: 100dvh; display: flex; align-items: center; padding: 128px 0 72px; overflow: hidden; isolation: isolate; }
+.hero .container { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px; align-items: center; }
+.hero h1 { font-family: var(--display); font-weight: 600; font-size: clamp(2.75rem, 5.6vw, 5.25rem); line-height: 1; letter-spacing: -0.03em; }
+.line { display: block; overflow: hidden; padding-bottom: .1em; margin-bottom: -.1em; }
+.line > span { display: inline-block; }
+.js .line > span { transform: translateY(108%); animation: lineUp var(--d-reveal) var(--ease-reveal) forwards; animation-delay: calc(var(--i) * 80ms + 120ms); }
+@keyframes lineUp { to { transform: none; } }
+.hero h1 .accent { color: var(--acc); }
+.hero .sub { font-size: 20px; line-height: 31px; color: var(--fg-2); max-width: 40ch; margin-top: 36px; }
+.hero .ctas { display: flex; align-items: center; gap: 36px; margin-top: 44px; flex-wrap: wrap; }
+.js .fade-up { opacity: 0; transform: translateY(16px); animation: fadeUp var(--d-reveal) var(--ease-reveal) forwards; animation-delay: var(--delay, 0ms); }
+@keyframes fadeUp { to { opacity: 1; transform: none; } }
+.hero-mark { justify-self: center; width: clamp(220px, 30vw, 440px); aspect-ratio: 1; position: relative; }
+.hero-mark img { width: 100%; height: 100%; }
+.js .hero-mark { opacity: 0; transform: scale(.9); animation: markIn 1400ms var(--ease-reveal) 380ms forwards; }
+@keyframes markIn { to { opacity: 1; transform: none; } }
+
+/* ===== Screenshot wipe ===== */
+.shot-sec { padding: 24px 0 var(--section); }
+.shot-wrap { --p: 1; width: calc(100% - 2 * var(--gutter)); max-width: 1600px; margin: 0 auto; }
+.js .shot-wrap { --p: 0; }
+.shot {
+  aspect-ratio: 16 / 10; border-radius: var(--r-frame); overflow: hidden; background: var(--bg-2);
+  border: 1px solid var(--line-2); box-shadow: var(--shadow-float);
+  clip-path: inset(calc((1 - var(--p)) * 9%) calc((1 - var(--p)) * 13%) calc((1 - var(--p)) * 9%) calc((1 - var(--p)) * 13%) round var(--r-frame));
+}
+.shot img { width: 100%; height: 100%; object-fit: cover; object-position: top left; transform: scale(calc(1.06 - .06 * var(--p))); transform-origin: 50% 0; color: var(--fg-3); font: 14px/20px var(--mono); }
+.shot-cap { display: flex; justify-content: space-between; gap: 24px; margin-top: 20px; font-size: 15px; color: var(--fg-3); }
+.shot-cap strong { color: var(--fg-1); font-weight: 500; }
+
+/* ===== Status marks ===== */
+.smark { flex: none; font-size: 17px; line-height: 1; color: var(--fg-1); }
+
+/* Morphing mark: Potential -> Detected -> Confirmed */
+.morph { position: relative; width: 18px; height: 18px; flex: none; color: var(--acc); }
+.morph > i { position: absolute; inset: 0; font-size: 18px; line-height: 1; opacity: 0; transform: scale(.6); filter: blur(2px); transition: opacity 250ms var(--ease-ui), transform 250ms var(--ease-ui), filter 250ms var(--ease-ui); }
+.morph[data-state="potential"] .m-potential, .morph[data-state="detected"] .m-detected, .morph[data-state="confirmed"] .m-confirmed { opacity: 1; transform: none; filter: none; }
+
+/* ===== Verification gate ===== */
+.gate-intro { padding-bottom: 56px; }
+.gate-seq { position: relative; }
+.gate-pin { position: relative; }
+.gate.is-pinned .gate-seq { height: calc(100vh + 9 * 40vh); }
+.gate.is-pinned .gate-pin { position: sticky; top: 0; height: 100vh; display: flex; align-items: center; padding-top: 64px; }
+.gate-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); gap: 64px; align-items: center; }
+.gate-count { font: 500 13px/16px var(--mono); color: var(--fg-3); margin-top: 28px; }
+.gate-count b { color: var(--acc); font-weight: 500; }
+.qstack { display: grid; overflow: hidden; padding-bottom: .08em; }
+.qbig {
+  grid-area: 1 / 1; font-family: var(--display); font-weight: 500; font-size: clamp(1.75rem, 2.8vw, 2.75rem); line-height: 1.08; letter-spacing: -0.02em; text-wrap: balance;
+  opacity: 0; transform: translateY(60%);
+  transition: opacity 500ms var(--ease-reveal), transform 900ms var(--ease-reveal);
+}
+.qbig.is-past { transform: translateY(-60%); }
+.qbig.is-active { opacity: 1; transform: none; }
+.rail { position: relative; margin-top: 44px; }
+.rail-track { position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px; background: var(--line-1); border-radius: 2px; overflow: hidden; }
+.rail-fill { position: absolute; inset: 0; background: var(--acc); transform-origin: 0 50%; transform: scaleX(var(--rail, 0)); }
+.rail-ticks { position: relative; display: flex; justify-content: space-between; }
+.tick {
+  width: 30px; height: 30px; display: grid; place-items: center; border-radius: var(--r-pill); cursor: pointer;
+  border: 1px solid var(--line-2); background: var(--bg-0); color: var(--fg-3); font: 500 12px/1 var(--mono);
+}
+.tick.is-done { background: var(--acc); border-color: var(--acc); color: var(--on-acc); }
+.tick.is-active { border-color: var(--acc); color: var(--fg-1); background: var(--bg-0); }
+.gate-next { margin-top: 24px; display: none; }
+.gate:not(.is-pinned) .gate-next { display: inline-flex; }
+
+.finding { background: var(--bg-1); border: 1px solid var(--line-2); border-radius: var(--r-frame); box-shadow: var(--shadow-float); overflow: hidden; }
+.finding-top { padding: 22px 26px; border-bottom: 1px solid var(--line-1); }
+.finding-path { font: 400 14px/18px var(--sans); color: var(--fg-3); overflow-wrap: anywhere; }
+.finding-title { font-family: var(--display); font-size: 26px; line-height: 30px; letter-spacing: -0.02em; margin-top: 8px; }
+.finding-title code { font-family: var(--mono); font-size: .8em; letter-spacing: 0; color: var(--acc); }
+.finding-meta { display: flex; flex-wrap: wrap; gap: 8px 26px; margin-top: 16px; align-items: center; font-size: 14px; color: var(--fg-2); }
+.sev { display: inline-flex; align-items: center; gap: 8px; color: var(--fg-1); }
+.sev::before { content: ""; width: 6px; height: 14px; border-radius: 1px; background: var(--sev-critical); }
+.status { display: inline-flex; align-items: center; gap: 9px; color: var(--fg-1); }
+.meta-k { color: var(--fg-3); margin-right: 6px; }
+.evs { display: grid; grid-template-columns: minmax(0, 1fr); padding: 22px 26px 26px; min-height: 290px; }
+.ev { grid-area: 1 / 1; min-width: 0; opacity: 0; transform: translateY(10px); filter: blur(3px); pointer-events: none; transition: opacity 300ms var(--ease-ui), transform 300ms var(--ease-ui), filter 300ms var(--ease-ui); }
+.ev.is-active { opacity: 1; transform: none; filter: none; pointer-events: auto; transition-duration: 600ms; transition-timing-function: var(--ease-reveal); }
+.ev-q { font: 500 12px/16px var(--mono); color: var(--fg-3); letter-spacing: .02em; }
+.ev-a { font-size: 19px; line-height: 29px; max-width: 40ch; color: var(--fg-1); }
+.facts { display: grid; gap: 10px; margin-top: 22px; }
+.facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 12px 16px; border-radius: var(--r-chip); background: var(--bg-2); }
+.facts dt { color: var(--fg-3); font-size: 15px; }
+.facts dd { margin: 0; color: var(--fg-1); font-weight: 500; font-size: 15px; text-align: right; }
+.facts dd.bad { color: var(--bad); }
+.facts dd.good { color: var(--ok); }
+
+.gate-after { padding-top: 72px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px 32px; font-size: 14px; color: var(--fg-2); }
+.legend li { display: inline-flex; align-items: center; gap: 9px; }
+.legend b { font-weight: 500; color: var(--fg-1); margin-right: 6px; }
+.held { margin-top: 36px; display: grid; grid-template-columns: auto 1fr; gap: 18px; padding: 24px 28px; border: 1px dashed var(--line-2); border-radius: var(--r-frame); max-width: 780px; }
+.held .smark { margin-top: 4px; font-size: 20px; }
+.held h3 { font-size: 18px; line-height: 26px; }
+.held p { color: var(--fg-2); margin-top: 6px; font-size: 16px; line-height: 26px; }
+.held code { font-size: 14px; color: var(--fg-1); }
+
+/* ===== Precision ===== */
+.zero-grid { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 48px; align-items: end; }
+.zero { font-family: var(--display); font-weight: 600; font-size: clamp(10rem, 27vw, 24rem); line-height: .78; letter-spacing: -0.05em; color: var(--acc); }
+.zero-copy h2 { font-family: var(--display); font-weight: 500; font-size: clamp(1.75rem, 3.2vw, 3rem); line-height: 1.05; letter-spacing: -0.025em; max-width: 20ch; text-wrap: balance; }
+.zero-copy p { color: var(--fg-2); margin-top: 20px; max-width: 46ch; }
+.ledger { margin-top: 96px; }
+.lrow { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px; padding: 28px 0; border-bottom: 1px solid var(--line-1); align-items: baseline; }
+.lrow:first-child { border-top: 1px solid var(--line-1); }
+.lname { font: 500 clamp(18px, 1.7vw, 23px)/1.3 var(--sans); }
+.lrule { color: var(--fg-2); font-size: 16px; line-height: 26px; }
+.lres { display: grid; gap: 6px; font: 400 14px/22px var(--mono); }
+.lres span { display: inline-flex; align-items: center; gap: 10px; }
+.lres .smark { color: var(--fg-1); }
+.lres i { color: var(--ok); font-size: 15px; }
+.tests { margin-top: 36px; font: 400 16px/26px var(--sans); color: var(--fg-2); max-width: 70ch; }
+.tests b { color: var(--fg-1); font-weight: 500; }
+
+/* ===== Platform: horizontal pan ===== */
+.pan { position: relative; }
+.pan-pin { position: relative; }
+.pan.is-pinned .pan-pin { position: sticky; top: 0; height: 100vh; overflow: hidden; display: flex; align-items: flex-start; padding-top: clamp(112px, 16vh, 168px); }
+.pan-track { position: relative; display: flex; gap: 0; will-change: transform; }
+.pan:not(.is-pinned) .pan-track { flex-direction: column; }
+.pan:not(.is-pinned) { padding: var(--section) 0; }
+.panel { flex: none; padding: 0 var(--gutter); }
+.pan.is-pinned .panel { padding-top: 0; }
+.panel--intro { width: min(46vw, 640px); padding-left: max(var(--gutter), calc((100vw - var(--container)) / 2 + var(--gutter))); }
+.panel--col { width: min(52vw, 640px); }
+.panel--wide { width: min(60vw, 720px); }
+.panel--shot { width: min(70vw, 980px); padding-right: max(var(--gutter), 8vw); }
+.pan.is-pinned .panel--shot { width: min(70vw, 980px, calc((100vh - 400px) * 1.6 + 2 * var(--gutter))); }
+.pan-line { position: absolute; left: 0; right: 0; top: 96px; height: 2px; overflow: visible; pointer-events: none; }
+.pan-line line { stroke: var(--acc); stroke-width: 2; stroke-dasharray: 1; stroke-dashoffset: calc(1 - var(--draw, 0)); }
+.pan:not(.is-pinned) .pan-line { display: none; }
+.node { position: relative; display: flex; width: max-content; align-items: center; gap: 12px; height: 32px; margin-top: 28px; }
+.node::before { content: ""; width: 12px; height: 12px; border: 1.5px solid var(--acc); background: var(--bg-0); transition: background-color 400ms var(--ease-reveal); }
+.node.is-reached::before { background: var(--acc); }
+.node span { font: 500 14px/16px var(--sans); color: var(--fg-2); border: 1px solid var(--line-2); background: var(--bg-1); border-radius: var(--r-chip); padding: 6px 10px; white-space: nowrap; }
+.pan:not(.is-pinned) .node::before { background: var(--acc); }
+.word { font-family: var(--display); font-weight: 600; font-size: clamp(3rem, 6vw, 5.5rem); line-height: .9; letter-spacing: -0.04em; white-space: nowrap; }
+.verb { font-size: 19px; line-height: 29px; color: var(--fg-2); margin-top: 24px; max-width: 34ch; }
+.caps { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 36px; max-width: 34rem; }
+.caps li { font-size: 16px; line-height: 22px; padding: 7px 14px; border: 1px solid var(--line-2); border-radius: var(--r-pill); color: var(--fg-1); }
+.panel--shot .shot { clip-path: none; }
+.panel--shot .shot img { transform: none; }
+.panel--shot figcaption { font-size: 15px; color: var(--fg-3); margin-top: 16px; }
+.pan:not(.is-pinned) .panel { width: 100%; max-width: var(--container); margin: 0 auto; padding: 0 var(--gutter); }
+.pan:not(.is-pinned) .panel + .panel { margin-top: 96px; }
+.pan:not(.is-pinned) .node { margin-top: 20px; }
+
+/* ===== Scope ===== */
+.scope { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 80px; align-items: center; }
+.rules { background: var(--bg-1); border: 1px solid var(--line-2); border-radius: var(--r-frame); overflow: hidden; box-shadow: var(--shadow-float); }
+.rules-top { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--line-1); font-size: 15px; }
+.rules-top .tag { font: 400 13px/16px var(--sans); color: var(--fg-3); border: 1px solid var(--line-2); border-radius: var(--r-chip); padding: 4px 8px; }
+.rule { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 0 20px; height: 46px; align-items: center; border-bottom: 1px solid var(--line-1); font: 400 15px/20px var(--sans); }
+.rule .act { display: inline-flex; gap: 8px; align-items: center; color: var(--acc); }
+.rule .act.ex { color: var(--fg-3); }
+.rule .val { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.runlog { padding: 18px 20px 20px; font: 400 15px/28px var(--sans); color: var(--fg-2); background: var(--bg-2); }
+.runlog .row { display: flex; justify-content: space-between; gap: 16px; }
+.runlog b { font-weight: 500; color: var(--fg-1); }
+.runlog .zero-sent { color: var(--ok); font-weight: 500; }
+
+/* ===== Protocols: one static row ===== */
+.protos { padding: 72px 0; }
+.protos-row { margin-top: 0; border-top: 1px solid var(--line-1); border-bottom: 1px solid var(--line-1); }
+.protos-row ul { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 28px; padding: 28px 0; }
+.protos-row li { display: inline-flex; align-items: center; gap: 12px; font: 500 clamp(17px, 1.6vw, 22px)/1 var(--sans); letter-spacing: -0.01em; white-space: nowrap; }
+.protos-row li i { color: var(--acc); font-size: 16px; }
+
+/* ===== Closing ===== */
+.closing { position: relative; overflow: hidden; isolation: isolate; padding: 200px 0; border-top: 1px solid var(--line-1); }
+.closing .container { position: relative; z-index: 1; }
+.closing .h2 { font-size: clamp(2.5rem, 5vw, 4.75rem); max-width: 18ch; }
+.closing p { color: var(--fg-2); margin-top: 32px; max-width: 50ch; font-size: 19px; line-height: 30px; }
+.closing .ctas { display: flex; align-items: center; gap: 36px; margin-top: 48px; flex-wrap: wrap; }
+
+/* ===== Footer ===== */
+.footer { border-top: 1px solid var(--line-1); padding: 64px 0 72px; font-size: 15px; }
+.footer-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 32px; }
+.footer p { color: var(--fg-3); margin-top: 16px; max-width: 34ch; font-size: 15px; line-height: 24px; }
+.footer h2 { font: 500 15px/22px var(--sans); color: var(--fg-1); margin-bottom: 14px; }
+.footer li + li { margin-top: 10px; }
+.footer a { color: var(--fg-2); text-decoration: none; }
+@media (hover: hover) and (pointer: fine) { .footer a:hover { color: var(--fg-1); } }
+
+/* ===== Responsive ===== */
+@media (max-width: 1100px) {
+  .gate-grid { gap: 40px; }
+}
+@media (max-width: 959px) {
+  :root { --section: 112px; --gutter: 28px; }
+  .nav-links { display: none; }
+  .hero { min-height: auto; padding-top: 128px; }
+  .hero .container { grid-template-columns: minmax(0, 1fr) auto; gap: 32px; }
+  .hero .lattice { -webkit-mask-image: radial-gradient(70% 70% at 90% 30%, #000 0%, transparent 80%); mask-image: radial-gradient(70% 70% at 90% 30%, #000 0%, transparent 80%); }
+  .hero-mark { width: clamp(150px, 24vw, 220px); justify-self: end; }
+  .js .hero-mark { animation-name: markInSoft; }
+  @keyframes markInSoft { to { opacity: 1; transform: none; } }
+  .gate-grid { grid-template-columns: 1fr; gap: 40px; }
+  .zero-grid { grid-template-columns: 1fr; gap: 16px; }
+  .lrow { grid-template-columns: 1fr; gap: 12px; padding: 28px 0; }
+  .lres { grid-template-columns: 1fr 1fr; }
+  .scope { grid-template-columns: 1fr; gap: 48px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .footer-grid > div:first-child { grid-column: 1 / -1; }
+  .shot-cap { flex-direction: column; gap: 4px; }
+}
+@media (max-width: 640px) {
+  :root { --gutter: 16px; --section: 88px; }
+  body { font-size: 16px; line-height: 26px; }
+  .nav { height: 56px; padding: 0 8px 0 18px; }
+  .hero { padding: 112px 0 48px; }
+  .hero .sub { font-size: 17px; line-height: 27px; margin-top: 24px; }
+  .hero .ctas { gap: 24px; margin-top: 32px; }
+  .hero .container { grid-template-columns: 1fr; }
+  .hero-mark { display: none; }
+  .lead { font-size: 17px; line-height: 27px; }
+  .finding-top { padding: 18px 16px; }
+  .evs { padding: 18px 16px 20px; min-height: 0; }
+  .pair { grid-template-columns: 1fr; gap: 0; }
+  .tick { width: 26px; height: 26px; font-size: 11px; }
+  .rule { grid-template-columns: 104px minmax(0, 1fr); padding: 0 14px; gap: 8px; font-size: 12px; }
+  .runlog { font-size: 12px; padding: 14px; }
+  .closing { padding: 128px 0; }
+  .btn { height: 52px; padding: 0 24px; }
+  .held { padding: 20px; }
+}
+
+/* ===== Reduced motion: static, opacity only ===== */
+@media (prefers-reduced-motion: reduce) {
+  .js .reveal, .js .fade-up, .js .hero-mark, .js .line > span { opacity: 1 !important; transform: none !important; animation: none !important; transition: none !important; }
+  .js .shot-wrap { --p: 1 !important; }
+  .qbig { transform: none !important; transition: opacity 200ms linear !important; }
+  .ev, .ev.is-active { transform: none !important; filter: none !important; transition: opacity 200ms linear !important; }
+  .morph > i, .node::before, .tick, .btn, .icon-btn, .tlink, .tlink i { transition: none !important; }
+  .btn:active, .icon-btn:active, .tick:active { scale: none; }
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <a class="brand" href="#top" aria-label="Sentinel home">
+    <svg viewBox="-51 -59 102 118" aria-hidden="true"><path d="M0 -54 L46 -27 L46 27 L0 54 L-46 27 L-46 -27 Z" fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="round"/><path d="M-23 -25 L23 -25 L23 -11 L-6 -11 L-6 -3 L23 -3 L23 25 L-23 25 L-23 11 L6 11 L6 3 L-23 3 Z" fill="currentColor"/></svg>
+    Sentinel
+  </a>
+  <nav class="nav-links" aria-label="Primary">
+    <a href="#verification">How it works</a>
+    <a href="#precision">Accuracy</a>
+    <a href="#platform">Workflow</a>
+    <a href="#scope">Safety</a>
+  </nav>
+  <div class="nav-end">
+    <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch theme"><i class="ph ph-sun" aria-hidden="true"></i></button>
+    <a class="btn btn-acc btn-sm" href="/signup">Get started</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- Hero -->
+  <section class="hero" id="top" aria-labelledby="hero-title">
+    <canvas class="lattice" data-lattice="hero" aria-hidden="true"></canvas>
+    <div class="container">
+      <div>
+        <h1 id="hero-title">
+          <span class="line"><span style="--i:0">Findings you</span></span>
+          <span class="line"><span style="--i:1">can <span class="accent">defend.</span></span></span>
+        </h1>
+        <p class="sub fade-up" style="--delay:420ms">Sentinel tests your apps and reports only what it can prove, with the evidence your team needs to fix it.</p>
+        <div class="ctas">
+          <a class="btn btn-acc" href="/signup">Get started<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+          <a class="tlink" href="/demo">Book a demo<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        </div>
+      </div>
+      <div class="hero-mark">
+        <img src="assets/logo.svg" width="140" height="140" alt="Sentinel logo">
+      </div>
+    </div>
+  </section>
+
+  <!-- Product screenshot -->
+  <section class="shot-sec" aria-label="Product">
+    <div class="shot-wrap" data-progress="shot">
+      <figure class="shot" style="margin:0">
+        <img src="assets/app-findings.png" width="2880" height="1800" loading="lazy"
+             alt="The Sentinel app showing a list of security issues sorted by how well each one is proven, with one critical issue open and its verdict at the top.">
+      </figure>
+      <p class="shot-cap"><strong>One clear verdict per issue.</strong> What was tested, what happened, and why it matters.</p>
+    </div>
+  </section>
+
+  <!-- Verification gate -->
+  <section class="gate" id="verification" aria-labelledby="gate-title">
+    <div class="container gate-intro reveal">
+      <h2 class="h2" id="gate-title">Nine checks before every alert.</h2>
+      <p class="lead">If an issue cannot pass them, it is never reported as fact.</p>
+    </div>
+
+    <div class="gate-seq" data-progress="gate">
+      <div class="gate-pin">
+        <div class="container gate-grid">
+          <div>
+            <div class="qstack">
+              <h3 class="qbig is-active">How does the app normally behave?</h3>
+              <h3 class="qbig" aria-hidden="true">What changed when we tested it?</h3>
+              <h3 class="qbig" aria-hidden="true">Why is that change a risk?</h3>
+              <h3 class="qbig" aria-hidden="true">Does it happen every time?</h3>
+              <h3 class="qbig" aria-hidden="true">Does a second test agree?</h3>
+              <h3 class="qbig" aria-hidden="true">Could it be harmless?</h3>
+              <h3 class="qbig" aria-hidden="true">What is the proof?</h3>
+              <h3 class="qbig" aria-hidden="true">How sure are we?</h3>
+              <h3 class="qbig" aria-hidden="true">Can your team see it too?</h3>
+            </div>
+            <div class="rail">
+              <div class="rail-track"><div class="rail-fill"></div></div>
+              <ol class="rail-ticks" aria-label="Jump to a check">
+                <li><button class="tick" type="button" aria-label="Check 1, normal behaviour">1</button></li>
+                <li><button class="tick" type="button" aria-label="Check 2, what changed">2</button></li>
+                <li><button class="tick" type="button" aria-label="Check 3, why it is a risk">3</button></li>
+                <li><button class="tick" type="button" aria-label="Check 4, does it happen every time">4</button></li>
+                <li><button class="tick" type="button" aria-label="Check 5, does a second test agree">5</button></li>
+                <li><button class="tick" type="button" aria-label="Check 6, could it be harmless">6</button></li>
+                <li><button class="tick" type="button" aria-label="Check 7, the proof">7</button></li>
+                <li><button class="tick" type="button" aria-label="Check 8, how sure we are">8</button></li>
+                <li><button class="tick" type="button" aria-label="Check 9, can your team see it">9</button></li>
+              </ol>
+            </div>
+            <p class="gate-count sr-only" aria-live="polite">Check <b data-count>1</b> of 9</p>
+            <button class="btn btn-acc btn-sm gate-next" type="button" data-gate-next>Next check<i class="ph ph-arrow-right" aria-hidden="true"></i></button>
+          </div>
+
+          <article class="finding" aria-label="Example issue moving through the nine checks">
+            <div class="finding-top">
+              <p class="finding-path">shop.example, order history page</p>
+              <h3 class="finding-title">Other customers' orders could be read</h3>
+              <div class="finding-meta">
+                <span class="sev">Critical</span>
+                <span class="status"><span class="morph" data-state="potential" aria-hidden="true"><i class="ph ph-circle-dashed m-potential"></i><i class="ph-fill ph-circle-half m-detected"></i><i class="ph-fill ph-seal-check m-confirmed"></i></span><span data-status-label>Unproven</span></span>
+                <span><span class="meta-k">Certainty</span><span data-confidence>Not yet known</span></span>
+              </div>
+            </div>
+            <div class="evs">
+              <div class="ev is-active" data-ev>
+                <p class="ev-a">We load the page three times without changing anything. It behaves the same each time.</p>
+                <dl class="facts"><div><dt>Normal page</dt><dd>Order 1042 shown</dd></div><div><dt>Same result</dt><dd>3 of 3 times</dd></div></dl>
+              </div>
+              <div class="ev" data-ev aria-hidden="true">
+                <p class="ev-a">We change one character in what the page sends. It breaks and shows a database error.</p>
+                <dl class="facts"><div><dt>Before</dt><dd>Page loads normally</dd></div><div><dt>After</dt><dd class="bad">Database error shown</dd></div></dl>
+              </div>
+              <div class="ev" data-ev aria-hidden="true">
+                <p class="ev-a">That error means what a visitor types reaches the database directly. Anyone could read data that is not theirs.</p>
+                <dl class="facts"><div><dt>Risk</dt><dd class="bad">Customer data exposed</dd></div><div><dt>Who could do it</dt><dd>Any visitor</dd></div></dl>
+              </div>
+              <div class="ev" data-ev aria-hidden="true">
+                <p class="ev-a">We repeat the test five times, alternating with normal visits. The result never changes.</p>
+                <dl class="facts"><div><dt>Changed request</dt><dd class="bad">Broke 5 of 5 times</dd></div><div><dt>Normal request</dt><dd class="good">Fine 5 of 5 times</dd></div></dl>
+              </div>
+              <div class="ev" data-ev aria-hidden="true">
+                <p class="ev-a">A completely different kind of test is run. It reaches the same conclusion.</p>
+                <dl class="facts"><div><dt>First test</dt><dd>Database error</dd></div><div><dt>Second test</dt><dd>Results changed as predicted</dd></div></dl>
+              </div>
+              <div class="ev" data-ev aria-hidden="true">
+                <p class="ev-a">We rule out the usual innocent causes before going further.</p>
+                <dl class="facts"><div><dt>Firewall blocking us</dt><dd class="good">Ruled out</dd></div><div><dt>Too many visits</dt><dd class="good">Ruled out</dd></div><div><dt>Any odd input breaks it</dt><dd class="good">Ruled out</dd></div></dl>
+              </div>
+              <div class="ev" data-ev aria-hidden="true">
+                <p class="ev-a">Every step is saved with the issue, so nothing has to be taken on trust.</p>
+                <dl class="facts"><div><dt>Saved</dt><dd>Every test and its result</dd></div><div><dt>Linked to</dt><dd>The check that used it</dd></div></dl>
+              </div>
+              <div class="ev" data-ev aria-hidden="true">
+                <p class="ev-a">Certainty comes with reasons, never with an unexplained score.</p>
+                <dl class="facts"><div><dt>Two tests agree</dt><dd class="good">Yes</dd></div><div><dt>Innocent causes left</dt><dd class="good">None</dd></div><div><dt>Certainty</dt><dd>High</dd></div></dl>
+              </div>
+              <div class="ev" data-ev aria-hidden="true">
+                <p class="ev-a">The issue comes with exact steps, so your developers can see it for themselves. All nine checks passed.</p>
+                <dl class="facts"><div><dt>Steps to reproduce</dt><dd>Included</dd></div><div><dt>Status</dt><dd class="good">Proven</dd></div></dl>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </div>
+
+    <div class="container gate-after reveal">
+      <ul class="legend" aria-label="What each status means">
+        <li><i class="ph-fill ph-seal-check smark" aria-hidden="true"></i><span><b>Proven</b> passed every check</span></li>
+        <li><i class="ph-fill ph-circle-half smark" aria-hidden="true"></i><span><b>Likely</b> one check still open</span></li>
+        <li><i class="ph ph-circle-dashed smark" aria-hidden="true"></i><span><b>Unproven</b> kept for review, never reported as fact</span></li>
+      </ul>
+      <aside class="held" aria-label="Example of an issue that did not pass">
+        <i class="ph ph-circle-dashed smark" aria-hidden="true"></i>
+        <div>
+          <h3>When a check fails, we say so.</h3>
+          <p>A search box echoed our test back, but in a way a browser would never run. An innocent explanation remained, so it stayed Unproven, with the evidence kept for your team.</p>
+        </div>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Accuracy -->
+  <section class="section" id="precision" aria-labelledby="precision-title">
+    <div class="container">
+      <div class="zero-grid reveal">
+        <p class="zero" aria-hidden="true">0</p>
+        <div class="zero-copy">
+          <h2 id="precision-title"><span class="sr-only">Zero </span>false alarms on our safe test apps.</h2>
+          <p>Every check is tried on a deliberately broken app and on a safe one. It must catch the first and stay silent on the second.</p>
+        </div>
+      </div>
+
+      <div class="ledger reveal" role="list" aria-label="What each check must get right">
+        <div class="lrow" role="listitem">
+          <p class="lname">Missing browser protections</p>
+          <p class="lrule">Flagged only on real web pages. Never on data feeds, redirects or error pages.</p>
+        </div>
+        <div class="lrow" role="listitem">
+          <p class="lname">Script injection</p>
+          <p class="lrule">Counted only when the test comes back exactly as sent, in a place a browser would run it.</p>
+        </div>
+        <div class="lrow" role="listitem">
+          <p class="lname">Database injection</p>
+          <p class="lrule">Needs a new error, a real delay or a real change in results. A matching keyword is never enough.</p>
+        </div>
+        <div class="lrow" role="listitem">
+          <p class="lname">Full runs</p>
+          <p class="lrule">The real checks, run start to finish against live test apps, safe and unsafe.</p>
+        </div>
+      </div>
+      <p class="tests reveal">No new check ships without tests for both cases.</p>
+    </div>
+  </section>
+
+  <!-- Workflow: horizontal pan -->
+  <section class="pan" id="platform" aria-labelledby="platform-title">
+    <div class="pan-seq" data-progress="pan">
+      <div class="pan-pin">
+        <div class="pan-track">
+          <svg class="pan-line" viewBox="0 0 100 2" preserveAspectRatio="none" aria-hidden="true"><line x1="0" y1="1" x2="100" y2="1" pathLength="1"/></svg>
+          <div class="panel panel--intro">
+            <h2 class="h2" id="platform-title">From first test to fixed.</h2>
+            <p class="lead">Everything about an issue stays in one place, from the first test to the final report.</p>
+          </div>
+          <div class="panel panel--col">
+            <h3 class="word">Connect</h3>
+            <div class="node"><span>shop.example added</span></div>
+            <p class="verb">Add your app and choose exactly what Sentinel may touch.</p>
+            <ul class="caps"><li>Websites</li><li>APIs</li><li>Logged-in areas</li><li>Approved systems only</li></ul>
+          </div>
+          <div class="panel panel--wide">
+            <h3 class="word">Test</h3>
+            <div class="node"><span>Testing in progress</span></div>
+            <p class="verb">Sentinel probes for real weaknesses, the way an attacker would.</p>
+            <ul class="caps"><li>Database injection</li><li>Script injection</li><li>File access</li><li>Security settings</li><li>Logins and sessions</li></ul>
+          </div>
+          <div class="panel panel--col">
+            <h3 class="word">Prove</h3>
+            <div class="node"><span>Issue proven</span></div>
+            <p class="verb">Only issues that pass all nine checks are reported as proven.</p>
+            <ul class="caps"><li>Evidence kept</li><li>Severity and certainty</li><li>Steps to reproduce</li></ul>
+          </div>
+          <div class="panel panel--shot">
+            <h3 class="word">Share</h3>
+            <div class="node"><span>Report ready</span></div>
+            <figure style="margin:36px 0 0">
+              <div class="shot">
+                <img src="assets/app-overview.png" width="2880" height="1800" loading="lazy"
+                     alt="A Sentinel project page showing five steps, scope, capture, test, decide and report, with the next step highlighted.">
+              </div>
+              <figcaption>Every project shows what is done and what needs you next.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Safety -->
+  <section class="section" id="scope" aria-labelledby="scope-title">
+    <div class="container scope">
+      <div class="reveal">
+        <h2 class="h2" id="scope-title">Only tests what you approve.</h2>
+        <p class="lead">Every test is checked against your approved list before it is sent. Anything else is skipped and logged.</p>
+      </div>
+      <div class="rules reveal" role="group" aria-label="Example approved list and test run summary">
+        <div class="rules-top"><span>Approved list</span><span class="tag">Example</span></div>
+        <div class="rule"><span class="act"><i class="ph ph-check" aria-hidden="true"></i>Allowed</span><span class="val">shop.example and its subdomains</span></div>
+        <div class="rule"><span class="act"><i class="ph ph-check" aria-hidden="true"></i>Allowed</span><span class="val">The shop's public API</span></div>
+        <div class="rule"><span class="act ex"><i class="ph ph-prohibit" aria-hidden="true"></i>Off-limits</span><span class="val">payments.shop.example</span></div>
+        <div class="rule"><span class="act ex"><i class="ph ph-prohibit" aria-hidden="true"></i>Off-limits</span><span class="val">The sign-out page</span></div>
+        <div class="runlog">
+          <div class="row"><span>Tests planned</span><span>640</span></div>
+          <div class="row"><span>Sent to approved systems</span><b>626</b></div>
+          <div class="row"><span>Skipped, off-limits</span><b>14</b></div>
+          <div class="row"><span>Sent anywhere else</span><span class="zero-sent">0</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Works with -->
+  <section class="protos" aria-labelledby="proto-title">
+    <h2 class="sr-only" id="proto-title">Works with</h2>
+    <div class="container protos-row">
+      <ul>
+        <li><i class="ph-fill ph-hexagon" aria-hidden="true"></i>Websites</li><li><i class="ph-fill ph-hexagon" aria-hidden="true"></i>Web APIs</li><li><i class="ph-fill ph-hexagon" aria-hidden="true"></i>Single-page apps</li><li><i class="ph-fill ph-hexagon" aria-hidden="true"></i>Mobile app backends</li><li><i class="ph-fill ph-hexagon" aria-hidden="true"></i>Logged-in areas</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- Closing -->
+  <section class="closing" id="get-started" aria-labelledby="closing-title">
+    <canvas class="lattice" data-lattice="closing" aria-hidden="true"></canvas>
+    <div class="container">
+      <div class="reveal">
+        <h2 class="h2" id="closing-title">See what is really at risk.</h2>
+        <p>Start with one app. Sentinel only tests systems you own or have permission to test.</p>
+      </div>
+      <div class="ctas">
+        <a class="btn btn-acc" href="/signup">Get started<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+        <a class="tlink" href="/demo">Book a demo<i class="ph ph-arrow-right" aria-hidden="true"></i></a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="container footer-grid">
+    <div>
+      <a class="brand" href="#top" aria-label="Sentinel home">
+        <svg viewBox="-51 -59 102 118" aria-hidden="true"><path d="M0 -54 L46 -27 L46 27 L0 54 L-46 27 L-46 -27 Z" fill="none" stroke="currentColor" stroke-width="9" stroke-linejoin="round"/><path d="M-23 -25 L23 -25 L23 -11 L-6 -11 L-6 -3 L23 -3 L23 25 L-23 25 L-23 11 L6 11 L6 3 L-23 3 Z" fill="currentColor"/></svg>
+        Sentinel
+      </a>
+      <p>Security testing that only reports what it can prove.</p>
+    </div>
+    <div>
+      <h2>Product</h2>
+      <ul>
+        <li><a href="#verification">How it works</a></li>
+        <li><a href="#precision">Accuracy</a></li>
+        <li><a href="#platform">Workflow</a></li>
+        <li><a href="#scope">Safety</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Get started</h2>
+      <ul>
+        <li><a href="/signup">Create an account</a></li>
+        <li><a href="/demo">Book a demo</a></li>
+      </ul>
+    </div>
+    <div>
+      <h2>Responsibility</h2>
+      <ul>
+        <li><a href="#get-started">Responsible use</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  var mqReduce = matchMedia('(prefers-reduced-motion: reduce)');
+  var mqDesktop = matchMedia('(min-width: 960px)');
+  var mqFine = matchMedia('(hover: hover) and (pointer: fine)');
+  var mqLight = matchMedia('(prefers-color-scheme: light)');
+  function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+  /* ---------- Theme ---------- */
+  var toggle = document.querySelector('[data-theme-toggle]');
+  var themeListeners = [];
+  function effective() { return root.dataset.theme || (mqLight.matches ? 'light' : 'dark'); }
+  function syncToggle() {
+    var dark = effective() === 'dark';
+    toggle.setAttribute('aria-label', dark ? 'Switch to light theme' : 'Switch to dark theme');
+    toggle.querySelector('i').className = 'ph ' + (dark ? 'ph-sun' : 'ph-moon');
+    themeListeners.forEach(function (f) { f(); });
+  }
+  toggle.addEventListener('click', function () {
+    var next = effective() === 'dark' ? 'light' : 'dark';
+    root.dataset.theme = next;
+    try { localStorage.setItem('sentinel-theme', next); } catch (e) {}
+    syncToggle();
+  });
+  if (mqLight.addEventListener) mqLight.addEventListener('change', syncToggle);
+
+  /* ---------- Reveals (major blocks only) ---------- */
+  var rio = new IntersectionObserver(function (es) {
+    es.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('is-in'); rio.unobserve(e.target); } });
+  }, { rootMargin: '0px 0px -12% 0px', threshold: 0.05 });
+  document.querySelectorAll('.reveal').forEach(function (el) { rio.observe(el); });
+
+  /* ---------- Hex lattice with verification sweep ---------- */
+  var HX = 46 / 54; // the logo hexagon's width-to-radius ratio
+  function rand(seed) { var s = seed; return function () { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
+
+  function Lattice(canvas, opts) {
+    var ctx = canvas.getContext('2d');
+    var base = document.createElement('canvas');
+    var bctx = base.getContext('2d');
+    var W = 0, H = 0, dpr = 1, R = 26, cells = [], color = '', alpha = 0.11;
+    var running = false, visible = false, raf = 0, cycleStart = -1e9;
+    var SWEEP = opts.sweep || 7000, REST = opts.rest || 1600;
+    var ptr = { x: -1e4, y: -1e4, tx: -1e4, ty: -1e4, vx: 0, vy: 0, on: false };
+
+    function hex(c, x, y, r) {
+      c.moveTo(x, y - r); c.lineTo(x + HX * r, y - r / 2); c.lineTo(x + HX * r, y + r / 2);
+      c.lineTo(x, y + r); c.lineTo(x - HX * r, y + r / 2); c.lineTo(x - HX * r, y - r / 2); c.closePath();
+    }
+    function readTheme() {
+      var cs = getComputedStyle(canvas);
+      color = cs.color;
+      alpha = parseFloat(cs.getPropertyValue('--lattice-alpha')) || 0.11;
+      alpha *= opts.alpha || 1;
+    }
+    function layout() {
+      var rect = canvas.getBoundingClientRect();
+      W = Math.max(1, rect.width); H = Math.max(1, rect.height);
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+      base.width = canvas.width; base.height = canvas.height;
+      R = W < 640 ? 18 : 26;
+      var sx = 2 * HX * R, sy = 1.5 * R, rows = Math.ceil(H / sy) + 2, cols = Math.ceil(W / sx) + 2;
+      var rnd = rand(7919);
+      cells = [];
+      for (var r = -1; r < rows; r++) {
+        for (var c = -1; c < cols; c++) {
+          var x = c * sx + (r & 1 ? HX * R : 0), y = r * sy;
+          cells.push({ x: x, y: y, s: (x + y * 0.42) / (W + H * 0.42), hit: -1e9, ok: false, ph: -1e9, pok: false, j: rnd() });
+        }
+      }
+      drawBase();
+      cycleStart = -1e9;
+      if (!running) still();
+    }
+    function drawBase() {
+      bctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      bctx.clearRect(0, 0, W, H);
+      bctx.globalAlpha = alpha; bctx.strokeStyle = color; bctx.lineWidth = 1; bctx.lineJoin = 'round';
+      bctx.beginPath();
+      for (var i = 0; i < cells.length; i++) hex(bctx, cells[i].x, cells[i].y, R * 0.84);
+      bctx.stroke();
+    }
+    function newCycle(t) {
+      cycleStart = t;
+      var rnd = rand(Math.floor(t) % 2147483646 + 1);
+      for (var i = 0; i < cells.length; i++) {
+        var c = cells[i];
+        c.ph = c.hit; c.pok = c.ok;
+        c.hit = t + c.s * SWEEP + c.j * 140;
+        c.ok = rnd() < (opts.confirm || 0.03);
+      }
+    }
+    function probe(dt) { if (dt < 0) return 0; if (dt < 160) return dt / 160; return Math.exp(-(dt - 160) / 650); }
+    function hold(dt) { if (dt < 0) return 0; if (dt < 260) return dt / 260; if (dt < 3200) return 1; if (dt < 4200) return 1 - (dt - 3200) / 1000; return 0; }
+
+    function paint(t, staticFrame) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, W, H);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(base, 0, 0, W, H);
+      ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1;
+      for (var i = 0; i < cells.length; i++) {
+        var c = cells[i], p, k, h = 0;
+        if (staticFrame) {
+          p = 0; k = c.j < 0.028 ? 1 : 0;
+          if (!k && c.j > 0.94) p = 0.35;
+        } else {
+          p = Math.max(probe(t - c.hit), probe(t - c.ph) * 0.999);
+          k = Math.max(c.ok ? hold(t - c.hit) : 0, c.pok ? hold(t - c.ph) : 0);
+          if (ptr.on) {
+            var dx = c.x - ptr.x, dy = c.y - ptr.y, d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 190) { h = 1 - d / 190; h *= h; }
+          }
+        }
+        if (p < 0.01 && k < 0.01 && h < 0.01) continue;
+        ctx.beginPath(); hex(ctx, c.x, c.y, R * 0.84);
+        ctx.globalAlpha = Math.min(1, alpha + 0.42 * h + 0.5 * p + 0.6 * k);
+        ctx.stroke();
+        var fill = 0.16 * p * (1 - k);
+        if (fill > 0.005) { ctx.globalAlpha = fill; ctx.fill(); }
+        if (k > 0.01) {
+          ctx.beginPath(); hex(ctx, c.x, c.y, R * 0.62);
+          ctx.globalAlpha = 0.85 * k * (opts.alpha || 1); ctx.fill();
+        }
+      }
+      ctx.globalAlpha = 1;
+    }
+    function frame(t) {
+      raf = 0;
+      if (!running) return;
+      if (t - cycleStart > SWEEP + REST) newCycle(t);
+      // spring-smoothed pointer
+      ptr.vx = (ptr.vx + (ptr.tx - ptr.x) * 0.09) * 0.74;
+      ptr.vy = (ptr.vy + (ptr.ty - ptr.y) * 0.09) * 0.74;
+      ptr.x += ptr.vx; ptr.y += ptr.vy;
+      paint(t, false);
+      raf = requestAnimationFrame(frame);
+    }
+    function still() { paint(0, true); }
+    function update() {
+      var should = visible && !document.hidden && !mqReduce.matches;
+      if (should && !running) { running = true; if (!raf) raf = requestAnimationFrame(frame); }
+      else if (!should && running) { running = false; if (raf) cancelAnimationFrame(raf); raf = 0; if (mqReduce.matches) still(); }
+    }
+    new IntersectionObserver(function (es) { visible = es[0].isIntersecting; update(); }).observe(canvas);
+    document.addEventListener('visibilitychange', update);
+    if (mqReduce.addEventListener) mqReduce.addEventListener('change', function () { update(); if (mqReduce.matches) still(); });
+    if (window.ResizeObserver) new ResizeObserver(function () { layout(); }).observe(canvas);
+    themeListeners.push(function () { readTheme(); drawBase(); if (!running) still(); });
+
+    if (opts.pointer) {
+      var host = canvas.parentElement;
+      host.addEventListener('pointermove', function (e) {
+        if (!mqFine.matches || e.pointerType !== 'mouse') return;
+        var r = canvas.getBoundingClientRect();
+        ptr.tx = e.clientX - r.left; ptr.ty = e.clientY - r.top;
+        if (!ptr.on) { ptr.x = ptr.tx; ptr.y = ptr.ty; ptr.on = true; }
+      });
+      host.addEventListener('pointerleave', function () { ptr.tx = ptr.ty = -1e4; setTimeout(function () { if (ptr.tx < -1e3) ptr.on = false; }, 900); });
+    }
+    readTheme(); layout();
+  }
+  var heroCanvas = document.querySelector('[data-lattice="hero"]');
+  var closeCanvas = document.querySelector('[data-lattice="closing"]');
+  if (heroCanvas && heroCanvas.getContext) new Lattice(heroCanvas, { pointer: true, confirm: 0.035 });
+  if (closeCanvas && closeCanvas.getContext) new Lattice(closeCanvas, { pointer: true, confirm: 0.02, alpha: 0.8, sweep: 9000, rest: 2400 });
+  syncToggle();
+
+  /* ---------- Scroll progress driver (IO + rAF, no scroll listeners) ---------- */
+  var tracked = new Map(), praf = 0;
+  function tick() {
+    tracked.forEach(function (fn, el) { fn(el); });
+    praf = tracked.size ? requestAnimationFrame(tick) : 0;
+  }
+  function track(el, fn) {
+    new IntersectionObserver(function (es) {
+      es.forEach(function (e) {
+        if (e.isIntersecting) { tracked.set(el, fn); if (!praf) praf = requestAnimationFrame(tick); }
+        else { tracked.delete(el); fn(el); }
+      });
+    }, { rootMargin: '20% 0px 20% 0px' }).observe(el);
+  }
+  function pinProgress(el) {
+    var r = el.getBoundingClientRect(), span = r.height - innerHeight;
+    return span > 0 ? clamp(-r.top / span, 0, 1) : (r.top < 0 ? 1 : 0);
+  }
+
+  /* Screenshot wipe */
+  var shot = document.querySelector('[data-progress="shot"]');
+  var lastShot = -1;
+  track(shot, function (el) {
+    if (mqReduce.matches) { el.style.setProperty('--p', 1); return; }
+    var r = el.getBoundingClientRect();
+    var p = clamp((innerHeight - r.top) / (innerHeight * 0.85), 0, 1);
+    p = 1 - Math.pow(1 - p, 3);
+    if (Math.abs(p - lastShot) > 0.001) { el.style.setProperty('--p', p.toFixed(4)); lastShot = p; }
+  });
+
+  /* ---------- Verification gate ---------- */
+  var gate = document.querySelector('.gate');
+  var seq = gate.querySelector('[data-progress="gate"]');
+  var qbig = Array.prototype.slice.call(gate.querySelectorAll('.qbig'));
+  var evs = Array.prototype.slice.call(gate.querySelectorAll('[data-ev]'));
+  var ticks = Array.prototype.slice.call(gate.querySelectorAll('.tick'));
+  var railFill = gate.querySelector('.rail-fill');
+  var morph = gate.querySelector('.morph');
+  var statusLabel = gate.querySelector('[data-status-label]');
+  var confEl = gate.querySelector('[data-confidence]');
+  var countEl = gate.querySelector('[data-count]');
+  var nextBtn = gate.querySelector('[data-gate-next]');
+  var CONF = ['Not yet known', 'Low', 'Low', 'Medium', 'Medium', 'High', 'High', 'High', 'Proven'];
+  var LABEL = { potential: 'Unproven', detected: 'Likely', confirmed: 'Proven' };
+  var current = -1;
+  function statusFor(i) { return i >= 8 ? 'confirmed' : i >= 3 ? 'detected' : 'potential'; }
+  function setStep(i) {
+    if (i === current) return;
+    current = i;
+    qbig.forEach(function (q, k) {
+      q.classList.toggle('is-active', k === i);
+      q.classList.toggle('is-past', k < i);
+      if (k === i) q.removeAttribute('aria-hidden'); else q.setAttribute('aria-hidden', 'true');
+    });
+    evs.forEach(function (ev, k) {
+      ev.classList.toggle('is-active', k === i);
+      if (k === i) ev.removeAttribute('aria-hidden'); else ev.setAttribute('aria-hidden', 'true');
+    });
+    var done = i === 8;
+    ticks.forEach(function (t, k) {
+      t.classList.toggle('is-done', k < i || (done && k === i));
+      t.classList.toggle('is-active', k === i && !done);
+      if (k === i) t.setAttribute('aria-current', 'step'); else t.removeAttribute('aria-current');
+    });
+    var st = statusFor(i);
+    morph.dataset.state = st;
+    statusLabel.textContent = LABEL[st];
+    confEl.textContent = CONF[i];
+    countEl.textContent = String(i + 1);
+    if (!gate.classList.contains('is-pinned')) railFill.style.setProperty('--rail', ((i) / 8).toFixed(4));
+    if (nextBtn) nextBtn.hidden = done;
+  }
+  function gateMode() {
+    var pinned = mqDesktop.matches && !mqReduce.matches;
+    gate.classList.toggle('is-pinned', pinned);
+    if (!pinned) railFill.style.setProperty('--rail', (Math.max(current, 0) / 8).toFixed(4));
+  }
+  gateMode();
+  setStep(0);
+  track(seq, function (el) {
+    if (!gate.classList.contains('is-pinned')) return;
+    var p = pinProgress(el);
+    railFill.style.setProperty('--rail', p.toFixed(4));
+    setStep(Math.min(8, Math.floor(p * 9 * 0.9999)));
+  });
+  ticks.forEach(function (t, k) {
+    t.addEventListener('click', function () {
+      if (gate.classList.contains('is-pinned')) {
+        var r = seq.getBoundingClientRect(), span = r.height - innerHeight;
+        var top = scrollY + r.top + span * ((k + 0.5) / 9);
+        window.scrollTo({ top: top, behavior: mqReduce.matches ? 'auto' : 'smooth' });
+      } else {
+        setStep(k);
+      }
+    });
+  });
+  if (nextBtn) nextBtn.addEventListener('click', function () { setStep(Math.min(current + 1, 8)); });
+
+  /* ---------- Platform horizontal pan ---------- */
+  var pan = document.querySelector('.pan');
+  var panSeq = pan.querySelector('[data-progress="pan"]');
+  var panTrack = pan.querySelector('.pan-track');
+  var panLine = pan.querySelector('.pan-line');
+  var nodes = Array.prototype.slice.call(pan.querySelectorAll('.node'));
+  var panDist = 0, nodeFrac = [];
+  function panMode() {
+    var pinned = mqDesktop.matches && !mqReduce.matches;
+    pan.classList.toggle('is-pinned', pinned);
+    if (!pinned) { panSeq.style.height = ''; panTrack.style.transform = ''; nodes.forEach(function (n) { n.classList.add('is-reached'); }); return; }
+    panTrack.style.transform = 'translate3d(0,0,0)';
+    var w = panTrack.scrollWidth;
+    panDist = Math.max(0, w - innerWidth);
+    panSeq.style.height = (innerHeight + panDist) + 'px';
+    var lineLeft = panTrack.querySelector('.panel--col').offsetLeft;
+    panLine.style.left = lineLeft + 'px';
+    panLine.style.width = (w - lineLeft) + 'px';
+    panLine.style.top = (nodes[0].offsetTop + nodes[0].offsetHeight / 2 - 1) + 'px';
+    nodeFrac = nodes.map(function (n) { return (n.parentElement.offsetLeft + n.offsetLeft - lineLeft + 12) / (w - lineLeft); });
+  }
+  track(panSeq, function (el) {
+    if (!pan.classList.contains('is-pinned')) return;
+    var p = pinProgress(el);
+    panTrack.style.transform = 'translate3d(' + (-p * panDist).toFixed(1) + 'px,0,0)';
+    // the line reaches the right edge of the viewport as the track pans
+    var reach = clamp((p * panDist + innerWidth * 0.62 - parseFloat(panLine.style.left)) / parseFloat(panLine.style.width), 0, 1);
+    panLine.style.setProperty('--draw', reach.toFixed(4));
+    nodes.forEach(function (n, k) { n.classList.toggle('is-reached', reach >= nodeFrac[k]); });
+  });
+
+  function onLayout() { gateMode(); panMode(); }
+  onLayout();
+  window.addEventListener('resize', function () { onLayout(); });
+  if (mqDesktop.addEventListener) mqDesktop.addEventListener('change', onLayout);
+  if (mqReduce.addEventListener) mqReduce.addEventListener('change', onLayout);
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(onLayout);
+  window.addEventListener('load', onLayout);
+})();
+</script>
+</body>
+</html>

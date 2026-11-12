@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 140 140" width="140" height="140" role="img" aria-label="Sentinel logo">
+  <defs>
+    <linearGradient id="sTop" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3b1fb0"/>
+      <stop offset="0.55" stop-color="#7a3cf0"/>
+      <stop offset="1" stop-color="#c05cf5"/>
+    </linearGradient>
+    <linearGradient id="sBottom" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#4b2bd6"/>
+      <stop offset="0.5" stop-color="#8b46f5"/>
+      <stop offset="1" stop-color="#d06bf7"/>
+    </linearGradient>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="3.2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <g transform="translate(70,70)" filter="url(#glow)">
+    <path d="M0 -54 L46 -27 L46 27 L0 54 L-46 27 L-46 -27 Z"
+          fill="none" stroke="url(#sTop)" stroke-width="9" stroke-linejoin="round" opacity="0.95"/>
+    <path d="M-23 -25 L23 -25 L23 -11 L-6 -11 L-6 -3 L23 -3 L23 25 L-23 25 L-23 11 L6 11 L6 3 L-23 3 Z"
+          fill="url(#sBottom)"/>
+  </g>
+</svg>

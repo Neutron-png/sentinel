@@ -366,7 +366,42 @@ impl Repository {
         Ok(())
     }
 
+    // ── finding verification records ──
+
+    /// Store (or replace) the verification record JSON for a finding.
+    pub fn save_finding_record(&self, finding_id: &Uuid, record_json: &str) -> anyhow::Result<()> {
+        self.conn.execute(
+            "INSERT INTO finding_records (finding_id, record_json) VALUES (?1, ?2)
+             ON CONFLICT(finding_id) DO UPDATE SET record_json = excluded.record_json",
+            params![finding_id.to_string(), record_json],
+        )?;
+        Ok(())
+    }
+
+    /// Verification records for every finding of an assessment, keyed by finding id.
+    pub fn load_finding_records(
+        &self,
+        assessment_id: &Uuid,
+    ) -> anyhow::Result<std::collections::HashMap<Uuid, String>> {
+        let mut stmt = self.conn.prepare(
+            "SELECT r.finding_id, r.record_json FROM finding_records r
+             JOIN findings f ON f.id = r.finding_id WHERE f.assessment_id = ?1",
+        )?;
+        let rows = stmt.query_map(params![assessment_id.to_string()], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?;
+        let mut out = std::collections::HashMap::new();
+        for row in rows {
+            let (id, json) = row?;
+            if let Ok(id) = Uuid::parse_str(&id) {
+                out.insert(id, json);
+            }
+        }
+        Ok(out)
+    }
+
     pub fn delete_finding(&self, id: &Uuid) -> anyhow::Result<()> {
+        self.conn.execute("DELETE FROM finding_records WHERE finding_id = ?1", params![id.to_string()])?;
         self.conn.execute(
             "DELETE FROM finding_evidence WHERE finding_id = ?1",
             params![id.to_string()],
